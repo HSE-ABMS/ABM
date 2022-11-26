@@ -8,16 +8,17 @@ https://www.hse.ru/en/edu/vkr/639867359
 Here is a quick snippet how to launch the simulation and obtain price graph:
 
     from AgentBasedModel import *
-
+    
     exchange = ExchangeAgent(volume=1000)
     simulator = Simulator(**{
         'exchange': exchange,
-        'traders': [Universalist(exchange, 10**3) for _ in range(20)]
+        'traders': [Universalist(exchange, 10**3) for _ in range(20)],
+        'events': [MarketPriceShock(200, -10)]
     })
     info = simulator.info
     simulator.simulate(500)
     
-    plot_price(info)
+    plot_price_fundamental(info)
 
 This code simulates single stock market with traders that can use both **fundamental**
 and **speculative** strategies for 500 iterations and plots its price graph.
