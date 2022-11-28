@@ -1,6 +1,7 @@
 from AgentBasedModel.utils import Order, OrderList
 from AgentBasedModel.utils.math import exp, mean
 import random
+from abc import abstractmethod
 
 
 class ExchangeAgent:
@@ -217,6 +218,11 @@ class Trader:
     def _cancel_order(self, order: Order):
         self.market.cancel_order(order)
         self.orders.remove(order)
+
+    @abstractmethod
+    def refresh(self, info):
+        pass
+
 
 
 class Random(Trader):
@@ -466,6 +472,9 @@ class Chartist(Trader):
             if prob > random.random():
                 self.sentiment = 'Optimistic'
 
+    def refresh(self, info):
+        self.change_sentiment(info)
+
 
 class Universalist(Fundamentalist, Chartist):
     """
@@ -544,6 +553,9 @@ class Universalist(Fundamentalist, Chartist):
             if prob > random.random() and self.sentiment == 'Optimistic':
                 self.type = 'Chartist'
                 self.sentiment = 'Pessimistic'
+
+    def refresh(self, info):
+        self.change_strategy(info)
 
 
 class MarketMaker(Trader):
