@@ -1,6 +1,7 @@
 from AgentBasedModel.simulator import Simulator
 from AgentBasedModel.agents import Trader, Universalist, Fundamentalist, MarketMaker
 from AgentBasedModel.utils.orders import Order
+from AgentBasedModel.messages import Message, PriceChangeMessage, LiquidityShockMessage, InformationMessage
 from itertools import chain
 
 
@@ -32,13 +33,14 @@ class FundamentalPriceShock(Event):
     def __repr__(self):
         return f'fundamental price shock (it={self.it}, dp={self.dp})'
 
-    def call(self, it: int):
+    def call(self, it: int) -> Message:
         if super().call(it):
             return
         divs = self.simulator.exchange.dividend_book  # link to dividend book
         r = self.simulator.exchange.risk_free  # risk-free rate
 
         self.simulator.exchange.dividend_book = [div + self.dp * r for div in divs]
+        return PriceChangeMessage()
 
 
 class MarketPriceShock(Event):
@@ -49,13 +51,14 @@ class MarketPriceShock(Event):
     def __repr__(self):
         return f'market price shock (it={self.it}, dp={self.dp})'
 
-    def call(self, it: int):
+    def call(self, it: int) -> Message:
         if super().call(it):
             return
 
         book = self.simulator.exchange.order_book
         for order in chain(*book.values()):
             order.price += round(self.dp, 1)
+        return PriceChangeMessage()
 
 
 class LiquidityShock(Event):
@@ -66,7 +69,7 @@ class LiquidityShock(Event):
     def __repr__(self):
         return f'liquidity shock (it={self.it}, dv={self.dv})'
 
-    def call(self, it: int):
+    def call(self, it: int) -> Message:
         if super().call(it):
             return
         exchange = self.simulator.exchange
@@ -76,21 +79,21 @@ class LiquidityShock(Event):
         else:  # sell
             order = Order(exchange.order_book['bid'].last.price, abs(self.dv), 'ask', pseudo_trader)
         exchange.market_order(order)
+        return LiquidityShockMessage()
 
 
 class InformationShock(Event):
-    def __init__(self, it, access: int):
+    def __init__(self, it):
         super().__init__(it)
         self.access = access
 
     def __repr__(self):
         return f'information shock (it={self.it}, access={self.access})'
 
-    def call(self, it: int):
+    def call(self, it: int) -> Message:
         if super().call(it):
             return
-        for trader in self.simulator.traders:
-            trader.access = self.access
+        return InformationMessage(self.access)
 
 
 class MarketMakerIn(Event):
@@ -103,12 +106,13 @@ class MarketMakerIn(Event):
     def __repr__(self):
         return f'mm in (it={self.it}, softlimit={self.softlimit})'
 
-    def call(self, it: int):
+    def call(self, it: int) -> Message:
         if super().call(it):
             return
 
         maker = MarketMaker(self.simulator.exchange, self.cash, self.assets, self.softlimit)
         self.simulator.traders.append(maker)
+        return None
 
 
 class MarketMakerOut(Event):
@@ -118,11 +122,12 @@ class MarketMakerOut(Event):
     def __repr__(self):
         return f'mm out (it={self.it})'
 
-    def call(self, it: int):
+    def call(self, it: int) -> Message:
         if super().call(it):
             return
 
         self.simulator.traders = [tr for tr in self.simulator.traders if type(tr) != MarketMaker]
+        return None
 
 
 class TransactionCost(Event):
@@ -133,8 +138,9 @@ class TransactionCost(Event):
     def __repr__(self):
         return f'transaction cost (it={self.it}, cost={self.cost}%)'
 
-    def call(self, it: int):
+    def call(self, it: int) -> Message:
         if super().call(it):
             return
 
         self.simulator.exchange.transaction_cost = self.cost
+        return None

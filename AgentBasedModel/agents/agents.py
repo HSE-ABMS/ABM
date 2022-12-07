@@ -1,5 +1,6 @@
 from AgentBasedModel.utils import Order, OrderList
 from AgentBasedModel.utils.math import exp, mean
+from AgentBasedModel.messages import Message, PriceChangeMessage, LiquidityShockMessage, InformationMessage
 import random
 from abc import abstractmethod
 
@@ -593,3 +594,16 @@ class MarketMaker(Trader):
             base_offset = -((spread['ask'] - spread['bid']) * (self.assets / self.softlimit))  # Price offset
             self._buy_limit(bid_volume, spread['bid'] - base_offset - .1)  # BID
             self._sell_limit(ask_volume, spread['ask'] + base_offset + .1)  # ASK
+
+class InformationalTrader(Trader):
+    def __init__(self, market: ExchangeAgent, cash: float, assets: int = 0):
+        super().__init__(market, cash, assets)
+
+    def call(self):
+        pass
+
+    def refresh(self, info):
+        p = self.market.price()
+        if any(lambda msg: msg is PriceChangeMessage, info.new_messages):
+            self._buy_limit(p, self.assets // 6)
+        pass

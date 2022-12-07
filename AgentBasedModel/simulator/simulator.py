@@ -13,6 +13,7 @@ class Simulator:
         self.events = [event.link(self) for event in events] if events else None  # link all events to simulator
         self.traders = traders
         self.info = SimulatorInfo(self.exchange, self.traders)  # links to existing objects
+        self.new_messages = []
 
     def _payments(self):
         for trader in self.traders:
@@ -23,26 +24,31 @@ class Simulator:
 
     def simulate(self, n_iter: int, silent=False) -> object:
         for it in tqdm(range(n_iter), desc='Simulation', disable=silent):
-            # Call scenario
-            if self.events:
-                for event in self.events:
-                    event.call(it)
+            self.simulate_step()
 
-            # Capture current info
-            self.info.capture()
+    def simulate_step(self) -> object:
+        # Call scenario
+        if self.events:
+            for event in self.events:
+                msg = event.call(it)
+                if msg is not None:
+                    self.info.new_messages(msg)
 
-            # Change behaviour
-            for trader in self.traders:
-                trader.refresh(self.info)
+        # Capture current info
+        self.info.capture()
 
-            # Call Traders
-            random.shuffle(self.traders)
-            for trader in self.traders:
-                trader.call()
+        # Change behaviour
+        for trader in self.traders:
+            trader.refresh(self.info)
 
-            # Payments and dividends
-            self._payments()  # pay dividends
-            self.exchange.generate_dividend()  # generate next dividends
+        # Call Traders
+        random.shuffle(self.traders)
+        for trader in self.traders:
+            trader.call()
+
+        # Payments and dividends
+        self._payments()  # pay dividends
+        self.exchange.generate_dividend()  # generate next dividends
 
         return self
 
@@ -69,6 +75,8 @@ class SimulatorInfo:
         self.types = list()  # agent: current type
         self.sentiments = list()  # agent: current sentiment
         self.returns = [{tr_id: 0 for tr_id in self.traders.keys()}]  # agent: iteration return
+
+        self.new_messages = []
 
         """
         # Market Statistics
