@@ -11,10 +11,10 @@ sim = Simulator(exchange=xg, traders=traders)
 sim.simulate(100000)
 
 sim.info.prices
-import numpy as np
 np.std(np.array(sim.info.prices))
 sim.info.orders
 
+import numpy as np
 import matplotlib.pyplot as plt
 plt.plot(np.array(sim.info.prices) + 222)
 plt.savefig('/tmp/out.png')
