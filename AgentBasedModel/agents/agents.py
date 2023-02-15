@@ -593,3 +593,35 @@ class MarketMaker(Trader):
             base_offset = -((spread['ask'] - spread['bid']) * (self.assets / self.softlimit))  # Price offset
             self._buy_limit(bid_volume, spread['bid'] - base_offset - .1)  # BID
             self._sell_limit(ask_volume, spread['ask'] + base_offset + .1)  # ASK
+
+from queue import Queue
+from AgentBasedModel.news.news import News
+
+class InfoFlow:
+    def __init__(self):
+        self.q = Queue()
+
+    def pull(self) -> News or None: 
+        if self.q.empty():
+            return None
+        p = self.q.get()
+        if p is News:
+            return p
+        if p == 0:
+            return None
+        self.q.put(p - 1)
+        return None
+
+class AwareTrader(Trader):
+    pass
+
+class NumericalFundamentalist(AwareTrader):
+    def __init__(self, expectation: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
+        super().__init__(market, cash, assets)
+        self.expectation = expectation
+        self.delay = delay
+        self.info_flow = InfoFlow()
+
+    @override
+    def refresh(self, info):
+        self.
