@@ -617,6 +617,7 @@ class InfoFlow:
         self.q.put(news)
         self.q.put(self.delay)
 
+
 class AwareTrader(Trader):
     def __init__(self, hesitation: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
         super().__init__(market, cash, assets)
@@ -627,6 +628,7 @@ class AwareTrader(Trader):
 
     def inform(self, news):
         self.info_flow.put(news)
+
 
 class NumericalFundamentalist(AwareTrader):
     def __init__(self, expectation: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
@@ -645,3 +647,25 @@ class NumericalFundamentalist(AwareTrader):
                 if q > 0:
                     self._buy_market(q)
 
+
+class AdaptiveNumericalFundamentalist(AwareTrader):
+    def __init__(self, expectation: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
+        super().__init__(6.0, delay, market, cash, assets)
+        self.expectation = expectation
+        self.reaction = 0.05
+
+    @staticmethod
+    def smooth(coef, old, new):
+        return old * (1 - coef) + new * coef
+
+    def call(self):
+        news = self.info_flow.pull()
+        if type(news) is not NumericalNews:
+            return
+        if news.performance > self.expectation:
+            self._sell_market(self.assets // self.hesitation)
+        else:
+            q = round(self.cash / self.hesitation / self.market.price())
+            if q > 0:
+                self._buy_market(q)
+        self.expectation = AdaptiveNumericalFundamentalist.smooth(self.reaction, self.expectation, news.performance)
