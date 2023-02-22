@@ -595,11 +595,12 @@ class MarketMaker(Trader):
             self._sell_limit(ask_volume, spread['ask'] + base_offset + .1)  # ASK
 
 from queue import Queue
-from AgentBasedModel.news.news import News
+from AgentBasedModel.news.news import News, CategoricalNews, NumericalNews
 
 class InfoFlow:
-    def __init__(self):
+    def __init__(self, delay):
         self.q = Queue()
+        self.delay = delay
 
     def pull(self) -> News or None: 
         if self.q.empty():
@@ -612,16 +613,35 @@ class InfoFlow:
         self.q.put(p - 1)
         return None
 
+    def put(self, news: News):
+        self.q.put(news)
+        self.q.put(self.delay)
+
 class AwareTrader(Trader):
-    pass
+    def __init__(self, hesitation: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
+        super().__init__(market, cash, assets)
+        self.info_flow = InfoFlow(delay)
+        # this is reciprocal of the share of cash/assets,
+        # that the agent is willing to offer at a time
+        self.hesitation = hesitation
+
+    def inform(self, news):
+        self.info_flow.put(news)
 
 class NumericalFundamentalist(AwareTrader):
     def __init__(self, expectation: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
-        super().__init__(market, cash, assets)
+        super().__init__(6.0, delay, market, cash, assets)
         self.expectation = expectation
-        self.delay = delay
-        self.info_flow = InfoFlow()
 
-    @override
-    def refresh(self, info):
-        self.
+    def call(self):
+        news = self.info_flow.pull()
+        if type(news) is CategoricalNews:
+            return
+        if type(news) is NumericalNews:
+            if news.performance > self.expectation:
+                self._sell_market(self.assets // self.hesitation)
+            else:
+                q = round(self.cash / self.hesitation / self.market.price())
+                if q > 0:
+                    self._buy_market(q)
+

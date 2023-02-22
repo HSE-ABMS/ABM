@@ -3,3 +3,4 @@ from AgentBasedModel.events import *
 from AgentBasedModel.simulator import *
 from AgentBasedModel.visualization import *
 from AgentBasedModel.states import *
+from AgentBasedModel.news import *

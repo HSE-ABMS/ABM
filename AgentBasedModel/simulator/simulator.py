@@ -1,5 +1,6 @@
 from AgentBasedModel.agents import ExchangeAgent, Universalist, Chartist, Fundamentalist
 from AgentBasedModel.utils.math import mean, std, difference, rolling
+from AgentBasedModel.news.news import News
 import random
 from tqdm import tqdm
 
@@ -21,7 +22,7 @@ class Simulator:
             # Interest payment
             trader.cash += trader.cash * self.exchange.risk_free  # allow risk-free loan
 
-    def simulate(self, n_iter: int, silent=False) -> object:
+    def simulate(self, n_iter: int, news: list[tuple[int, News]], silent=False) -> object:
         for it in tqdm(range(n_iter), desc='Simulation', disable=silent):
             # Call scenario
             if self.events:
