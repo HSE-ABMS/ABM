@@ -669,3 +669,28 @@ class AdaptiveNumericalFundamentalist(AwareTrader):
             if q > 0:
                 self._buy_market(q)
         self.expectation = AdaptiveNumericalFundamentalist.smooth(self.reaction, self.expectation, news.performance)
+
+
+class MemoNumerical(AwareTrader):
+    def __init__(self, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
+        super().__init__(6.0, delay, market, cash, assets)
+        self.memory = []
+        self.performance_records = []
+
+        self.est_performance = 0
+        self.est_expected = 0
+
+    def call(self):
+        news = self.info_flow.pull()
+        if type(news) is NumericalNews:
+            self.memory.append("news")
+            self.performance_records.append(news.performance)
+        else:
+            self.memory.append(self.market.price())
+        
+        self.est_performance 
+        if len(self.performance_records) < 5:
+            return
+
+            
+
