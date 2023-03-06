@@ -649,10 +649,10 @@ class NumericalFundamentalist(AwareTrader):
 
 
 class AdaptiveNumericalFundamentalist(AwareTrader):
-    def __init__(self, expectation: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
+    def __init__(self, phi: float, expectation: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
         super().__init__(6.0, delay, market, cash, assets)
         self.expectation = expectation
-        self.reaction = 0.05
+        self.phi = phi
 
     @staticmethod
     def smooth(coef, old, new):
@@ -668,17 +668,71 @@ class AdaptiveNumericalFundamentalist(AwareTrader):
             q = round(self.cash / self.hesitation / self.market.price())
             if q > 0:
                 self._buy_market(q)
-        self.expectation = AdaptiveNumericalFundamentalist.smooth(self.reaction, self.expectation, news.performance)
+        self.expectation = AdaptiveNumericalFundamentalist.smooth(self.phi, self.expectation, news.performance)
 
 
 class MemoNumerical(AwareTrader):
-    def __init__(self, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
+    def __init__(self, epsilon: int, phi: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
+        """
+        :param epsilon: number of iterations before and after news to be considered for comparison
+        """
         super().__init__(6.0, delay, market, cash, assets)
         self.memory = []
         self.performance_records = []
 
-        self.est_performance = 0
-        self.est_expected = 0
+        self.est_performance = 0  # what the trader thinks the actual performance of the company is
+        self.est_expected = 0     # what the trader thinks others think the actual performance is
+
+        self.phi = phi
+
+        # Here we describe the mechanism, responsible for
+        # collecting data on prices before and after news.
+        #
+        # For each report, we have two data pieces: prices
+        # before and after the report. By prices we mean
+        # the average price of n deals.
+        #
+        # To collect the first n prices after a new report
+        # we nullify fields `after_sum` and `after_count`
+        # and add first n prices after a report. If a new 
+        # report is pulled while `after_count` is less 
+        # than n, then we need to perform the 'adjustment'
+        # right now. I'll talk about adjustment later.
+        #
+        # To collect the last n prices *before* a new 
+        # report, we need to create a queue. This queue 
+        # will be no longer than n. We start filling this
+        # queue after each report, and when it's longer
+        # than n, we pull from it. That will make sure
+        # that we aren't wasting memory (alternatively, we
+        # could record all prices for each agent, which
+        # would be inefficient).
+        # 
+        # Adjustment happens when one of two conditions is
+        # met:
+        #   1. `after_count` has reached n
+        #   2. a new report is pulled *and* `after_count`
+        #      is greater than some threshold
+        # It is also essential that `before_count` is also
+        # greater than some threshold.
+        # Once met, we calculate the difference between
+        # prices and divide by their sum. Precise formula:
+        #
+        #         `after_avg` - `before_avg`
+        #   ΔP = ----------------------------
+        #         `after_avg` + `before_avg`
+        #
+        # ΔP ∈ [-1; 1]
+        # Naturally, ΔP can be used as a coefficient for
+        # adjusting the estimated expected performance.
+        #
+        # ΔP indicates how much other traders were mistaken
+        # about the actual performance of the company.
+        # Since we can estimate the performance of the 
+        # company, we can estimate the new performance that
+        # traders expect by multiplying our currently
+        # estimated performance by (1 + φ * ΔP). 
+        self.sum
 
     def call(self):
         news = self.info_flow.pull()
@@ -688,9 +742,5 @@ class MemoNumerical(AwareTrader):
         else:
             self.memory.append(self.market.price())
         
-        self.est_performance 
-        if len(self.performance_records) < 5:
-            return
-
-            
+        self.est_performance = AdaptiveNumericalFundamentalist.smooth(self.phi, old, new)
 
