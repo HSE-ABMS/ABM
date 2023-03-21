@@ -43,3 +43,14 @@ def aggregate(types_arr: list, target_arr: list, labels) -> dict:
                 v = None
             data[k].append(v)
     return data
+
+import random
+class NoiseGenerator:
+    def __init__(self):
+        self.__value__ = 0
+        self.__delta__ = 0
+
+    def next(self):
+        self.__delta__ += random.gauss(0, 0.1)
+        self.__value__ += self.__delta__
+        return self.__value__
