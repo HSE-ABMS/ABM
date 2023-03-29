@@ -20,18 +20,13 @@ step = 0
 for i in range(100):
     step += randint(60, 120)
     news.append((step, NumericalNews(gen.next() + 100)))
-    (10, NumericalNews()),
-sim.simulate(100, news)
+sim.simulate(10000, news)
 
 sim.info.prices
 np.std(np.array(sim.info.prices))
 sim.info.orders
 
 import matplotlib.pyplot as plt
-plt.plot(np.array(sim.info.prices) + 222)
+plt.plot(np.array(sim.info.prices))
 plt.savefig('/tmp/out.png')
-
-
-a = 5
-type(a) is int
 

@@ -1,1 +1,2 @@
-from AgentBasedModel.utils.orders import Order, OrderList, NoiseGenerator
+from AgentBasedModel.utils.orders import Order, OrderList
+from AgentBasedModel.utils.math import NoiseGenerator

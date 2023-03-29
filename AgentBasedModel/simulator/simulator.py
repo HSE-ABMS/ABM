@@ -3,6 +3,7 @@ from AgentBasedModel.utils.math import mean, std, difference, rolling
 from AgentBasedModel.news.news import News
 import random
 from tqdm import tqdm
+from queue import Queue
 
 
 class Simulator:
@@ -23,6 +24,7 @@ class Simulator:
             trader.cash += trader.cash * self.exchange.risk_free  # allow risk-free loan
 
     def simulate(self, n_iter: int, news: list[tuple[int, News]], silent=False) -> object:
+        news_q = news[:]
         for it in tqdm(range(n_iter), desc='Simulation', disable=silent):
             # Call scenario
             if self.events:
@@ -40,6 +42,15 @@ class Simulator:
             random.shuffle(self.traders)
             for trader in self.traders:
                 trader.call()
+
+            # Inform Traders
+            if not news_q.empty():
+                step_id, news_item = news_q.get()
+                if it < step_id:
+                    news_q.put(j)
+                for trader in self.traders:
+                    if trader is AwareTrader:
+                        trader.inform(news)
 
             # Payments and dividends
             self._payments()  # pay dividends
