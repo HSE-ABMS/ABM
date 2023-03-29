@@ -4,6 +4,8 @@ from AgentBasedModel.news.news import News
 import random
 from tqdm import tqdm
 from queue import Queue
+from AgentBasedModel.news import InfoFlow
+from AgentBasedModel.agents import AwareTrader
 
 
 class Simulator:
@@ -23,8 +25,7 @@ class Simulator:
             # Interest payment
             trader.cash += trader.cash * self.exchange.risk_free  # allow risk-free loan
 
-    def simulate(self, n_iter: int, news: list[tuple[int, News]], silent=False) -> object:
-        news_q = news[:]
+    def simulate(self, n_iter: int, news: InfoFlow, silent=False) -> object:
         for it in tqdm(range(n_iter), desc='Simulation', disable=silent):
             # Call scenario
             if self.events:
@@ -44,13 +45,11 @@ class Simulator:
                 trader.call()
 
             # Inform Traders
-            if not news_q.empty():
-                step_id, news_item = news_q.get()
-                if it < step_id:
-                    news_q.put(j)
+            n = news.pull()
+            if n is not None:
                 for trader in self.traders:
-                    if trader is AwareTrader:
-                        trader.inform(news)
+                    if isinstance(trader, AwareTrader):
+                        trader.inform(n)
 
             # Payments and dividends
             self._payments()  # pay dividends

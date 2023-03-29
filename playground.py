@@ -1,6 +1,6 @@
 from AgentBasedModel import Simulator, ExchangeAgent, Random
 from AgentBasedModel import NumericalFundamentalist, AdaptiveNumericalFundamentalist
-from AgentBasedModel import NumericalNews, CategoricalNews, News
+from AgentBasedModel import NumericalNews, CategoricalNews, News, InfoFlow
 from AgentBasedModel import NoiseGenerator
 import numpy as np
 from random import random, randint
@@ -15,11 +15,10 @@ traders += [AdaptiveNumericalFundamentalist(phi=0.01, expectation=random() * 60 
 sim = Simulator(exchange=xg, traders=traders)
 
 gen = NoiseGenerator()
-news = []
+news = InfoFlow()
 step = 0
 for i in range(100):
-    step += randint(60, 120)
-    news.append((step, NumericalNews(gen.next() + 100)))
+    news.put(randint(60, 120), NumericalNews(gen.next() + 100))
 sim.simulate(10000, news)
 
 sim.info.prices

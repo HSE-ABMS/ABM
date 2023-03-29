@@ -2,6 +2,7 @@ from AgentBasedModel.utils import Order, OrderList
 from AgentBasedModel.utils.math import exp, mean
 import random
 from abc import abstractmethod
+from AgentBasedModel.news import InfoFlow
 
 
 class ExchangeAgent:
@@ -597,37 +598,17 @@ class MarketMaker(Trader):
 from queue import Queue
 from AgentBasedModel.news.news import News, CategoricalNews, NumericalNews
 
-class InfoFlow:
-    def __init__(self, delay):
-        self.q = Queue()
-        self.delay = delay
-
-    def pull(self) -> News or None: 
-        if self.q.empty():
-            return None
-        p = self.q.get()
-        if p is News:
-            return p
-        if p == 0:
-            return None
-        self.q.put(p - 1)
-        return None
-
-    def put(self, news: News):
-        self.q.put(news)
-        self.q.put(self.delay)
-
-
 class AwareTrader(Trader):
     def __init__(self, hesitation: float, delay: int, market: ExchangeAgent, cash: float or int, assets: int = 0):
         super().__init__(market, cash, assets)
-        self.info_flow = InfoFlow(delay)
+        self.info_flow = InfoFlow()
         # this is reciprocal of the share of cash/assets,
         # that the agent is willing to offer at a time
         self.hesitation = hesitation
+        self.delay = delay
 
     def inform(self, news):
-        self.info_flow.put(news)
+        self.info_flow.put(self.delay, news)
 
 
 class NumericalFundamentalist(AwareTrader):
