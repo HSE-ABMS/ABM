@@ -33,10 +33,7 @@ class Simulator:
 
             # Change behaviour
             for trader in self.traders:
-                if type(trader) == Universalist:
-                    trader.change_strategy(self.info)
-                elif type(trader) == Chartist:
-                    trader.change_sentiment(self.info)
+                trader.refresh(self.info)
 
             # Call Traders
             random.shuffle(self.traders)

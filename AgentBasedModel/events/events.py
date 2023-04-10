@@ -90,8 +90,7 @@ class InformationShock(Event):
         if super().call(it):
             return
         for trader in self.simulator.traders:
-            if type(trader) in (Universalist, Fundamentalist):
-                trader.access = self.access
+            trader.access = self.access
 
 
 class MarketMakerIn(Event):
