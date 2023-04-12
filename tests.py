@@ -1,9 +1,9 @@
 from AgentBasedModel import Random, Simulator
 from AgentBasedModel import Broker
+from AgentBasedModel import Trader
 from random import seed, random
 
 class FakeBroker(Broker):
-
     def __init__(self, price: float or int, spread: dict or None, ):
         self.fake_price = price
         self.fake_spread = spread
@@ -11,8 +11,13 @@ class FakeBroker(Broker):
         self.market_orders = []
         self.cancel_orders = []
 
+        self.id = 0
+        self.risk_free = 5e-4
+        self.transaction_cost = 0.0
+
     def generate_dividend(self):
-        self._not_impl()
+        # self._not_impl()
+        pass
 
     def spread(self) -> dict or None:
         return self.fake_spread
@@ -24,7 +29,7 @@ class FakeBroker(Broker):
         return self.fake_price
 
     def dividend(self, access: int = None) -> list or float:
-        return []
+        return 0.0
 
     def limit_order(self, order):
         self.limit_orders.append(order)
@@ -38,9 +43,25 @@ class FakeBroker(Broker):
     def order_book(self):
         return {'bid': [], 'ask': []}
 
-def test_random1():
+class FakeTrader(Trader):
+    def __init__(self, markets, cash, assets):
+        super().__init__(markets, cash, assets)
+
+    def call(self):
+        self._buy_limit(1, 5, 0)
+
+def test_faketrader_order_count_1():
     broker = FakeBroker(5, {'bid': 10.0, 'ask': 9.0})
     seed(42)
-    traders = [Random(broker, 100, [10])]
+    traders = [FakeTrader([broker], 100, [10])]
     Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10)
-    assert len(broker.limit_orders) != 0
+    assert len(broker.limit_orders) == 10
+    assert len(broker.market_orders) == 0
+
+def test_faketrader_order_count_2():
+    broker = FakeBroker(5, {'bid': 10.0, 'ask': 9.0})
+    seed(42)
+    traders = [FakeTrader([broker], 100, [10]) for _ in range(20)]
+    Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10)
+    assert len(broker.limit_orders) == 200
+    assert len(broker.market_orders) == 0

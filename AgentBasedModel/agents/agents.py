@@ -3,6 +3,7 @@ from typing import List
 from AgentBasedModel.utils import Order, OrderList
 from AgentBasedModel.utils.math import exp, mean
 import random
+from abc import abstractmethod
 
 
 class Broker:
@@ -80,16 +81,15 @@ class ExchangeAgent(Broker):
 
     def __init__(self, price: float or int = 100, std: float or int = 25, volume: int = 1000, rf: float = 5e-4,
                  transaction_cost: float = 0):
-        self.id = Broker.id
+        self.id = ExchangeAgent.id
         self.name = f'ExchangeAgent{self.id}'
-        Broker.id += 1
+        ExchangeAgent.id += 1
         self.volume = volume
         self._order_book = {'bid': OrderList('bid'), 'ask': OrderList('ask')}
         self.dividend_book = list()  # act like queue
         self.risk_free = rf
         self.transaction_cost = transaction_cost
         self._fill_book(price, std, volume, rf * price)  # initialise both order book and dividend book
-        print(f"{self.name}")
 
     def generate_dividend(self):
         # Generate future dividend
@@ -280,6 +280,9 @@ class Trader:
         self.markets[order.market_id].cancel_order(order)
         self.orders.remove(order)
 
+    @abstractmethod
+    def refresh(self, info):
+        pass
 
 class Random(Trader):
     """
@@ -546,6 +549,8 @@ class Chartist(Trader):
             if prob > random.random():
                 self.sentiment = 'Optimistic'
 
+    def refresh(self, info):
+        self.change_sentiment(info)
 
 class Universalist(Fundamentalist, Chartist):
     """
@@ -626,6 +631,8 @@ class Universalist(Fundamentalist, Chartist):
                 self.type = 'Chartist'
                 self.sentiment = 'Pessimistic'
 
+    def refresh(self, info):
+        self.change_strategy(info)
 
 class MarketMaker(Trader):
     """
