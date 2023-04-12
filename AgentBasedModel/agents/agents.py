@@ -4,9 +4,6 @@ from AgentBasedModel.utils import Order, OrderList
 from AgentBasedModel.utils.math import exp, mean
 import random
 
-class Exchange:
-    pass
-
 
 class Broker:
     """
@@ -29,24 +26,6 @@ class Broker:
     def generate_dividend(self):
         """
         Add new dividend to queue and pop last
-        """
-        raise NotImplemented("Method not implemented for Broker!")
-
-    def _fill_book(self, price, std, volume, div: float = 0.05):
-        """
-        Fill order book with random orders and fill dividend book with future dividends.
-
-        **Order book:** generate prices from normal distribution with *std*, and *price* as center; generate
-        quantities for these orders from uniform distribution with 1, 5 bounds. Set bid orders when
-        order price is less than *price*, set ask orders when order price is greater than *price*.
-
-        **Dividend book:** add 100 dividends using *_next_dividend* method.
-        """
-        raise NotImplemented("Method not implemented for Broker!")
-
-    def _clear_book(self):
-        """
-        **(UNUSED)** Clear order book from orders with 0 quantity.
         """
         raise NotImplemented("Method not implemented for Broker!")
 
@@ -112,6 +91,15 @@ class BrokerImpl(Broker):
         self.dividend_book.pop(0)
 
     def _fill_book(self, price, std, volume, div: float = 0.05):
+        """
+        Fill order book with random orders and fill dividend book with future dividends.
+
+        **Order book:** generate prices from normal distribution with *std*, and *price* as center; generate
+        quantities for these orders from uniform distribution with 1, 5 bounds. Set bid orders when
+        order price is less than *price*, set ask orders when order price is greater than *price*.
+
+        **Dividend book:** add 100 dividends using *_next_dividend* method.
+        """
         # Order book
         prices1 = [round(random.normalvariate(price - std, std), 1) for _ in range(volume // 2)]
         prices2 = [round(random.normalvariate(price + std, std), 1) for _ in range(volume // 2)]
@@ -131,6 +119,9 @@ class BrokerImpl(Broker):
             div *= self._next_dividend()
 
     def _clear_book(self):
+        """
+        **(UNUSED)** Clear order book from orders with 0 quantity.
+        """
         self.order_book['bid'] = OrderList.from_list([order for order in self.order_book['bid'] if order.qty > 0])
         self.order_book['ask'] = OrderList.from_list([order for order in self.order_book['ask'] if order.qty > 0])
 
