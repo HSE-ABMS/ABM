@@ -10,6 +10,9 @@ class Broker:
     Broker implements automatic orders handling within the order book
     """
 
+    def _not_impl(_):
+        raise Exception("Not implemented")
+
     def __init__(self, price: float or int = 100, std: float or int = 25, volume: int = 1000, rf: float = 5e-4,
                  transaction_cost: float = 0):
         """
@@ -21,13 +24,13 @@ class Broker:
         :param rf: risk-free rate
         :param transaction_cost: transaction cost on operations for traders
         """
-        raise NotImplemented("Method not implemented for Broker!")
+        self._not_impl()
 
     def generate_dividend(self):
         """
         Add new dividend to queue and pop last
         """
-        raise NotImplemented("Method not implemented for Broker!")
+        self._not_impl()
 
     def spread(self) -> dict or None:
         """
@@ -35,7 +38,7 @@ class Broker:
 
         :return: {'bid': float, 'ask': float}
         """
-        raise NotImplemented("Method not implemented for Broker!")
+        self._not_impl()
 
     def spread_volume(self) -> dict or None:
         """
@@ -43,13 +46,13 @@ class Broker:
 
         :return: {'bid': float, 'ask': float}
         """
-        raise NotImplemented("Method not implemented for Broker!")
+        self._not_impl()
 
     def price(self) -> float:
         """
         Returns current stock price as mean between best bid and ask prices
         """
-        raise NotImplemented("Method not implemented for Broker!")
+        self._not_impl()
 
     def dividend(self, access: int = None) -> list or float:
         """
@@ -57,18 +60,22 @@ class Broker:
 
         :param access: the number of future dividends accessed by a trader
         """
-        raise NotImplemented("Method not implemented for Broker!")
+        self._not_impl()
 
     def limit_order(self, order: Order):
-        raise NotImplemented("Method not implemented for Broker!")
+        self._not_impl()
 
     def market_order(self, order: Order) -> Order:
-        raise NotImplemented("Method not implemented for Broker!")
+        self._not_impl()
 
     def cancel_order(self, order: Order):
-        raise NotImplemented("Method not implemented for Broker!")
+        self._not_impl()
 
-class BrokerImpl(Broker):
+    def order_book(self):
+        self._not_impl()
+        
+
+class ExchangeAgent(Broker):
     id = 0
 
     def __init__(self, price: float or int = 100, std: float or int = 25, volume: int = 1000, rf: float = 5e-4,
@@ -77,7 +84,7 @@ class BrokerImpl(Broker):
         self.name = f'ExchangeAgent{self.id}'
         Broker.id += 1
         self.volume = volume
-        self.order_book = {'bid': OrderList('bid'), 'ask': OrderList('ask')}
+        self._order_book = {'bid': OrderList('bid'), 'ask': OrderList('ask')}
         self.dividend_book = list()  # act like queue
         self.risk_free = rf
         self.transaction_cost = transaction_cost
@@ -108,10 +115,10 @@ class BrokerImpl(Broker):
         for (p, q) in zip(sorted(prices1 + prices2), quantities):
             if p > price:
                 order = Order(round(p, 1), q, 'ask', 0, None)
-                self.order_book['ask'].append(order)
+                self._order_book['ask'].append(order)
             else:
                 order = Order(p, q, 'bid', 0, None)
-                self.order_book['bid'].push(order)
+                self._order_book['bid'].push(order)
 
         # Dividend book
         for i in range(100):
@@ -122,17 +129,17 @@ class BrokerImpl(Broker):
         """
         **(UNUSED)** Clear order book from orders with 0 quantity.
         """
-        self.order_book['bid'] = OrderList.from_list([order for order in self.order_book['bid'] if order.qty > 0])
-        self.order_book['ask'] = OrderList.from_list([order for order in self.order_book['ask'] if order.qty > 0])
+        self._order_book['bid'] = OrderList.from_list([order for order in self._order_book['bid'] if order.qty > 0])
+        self._order_book['ask'] = OrderList.from_list([order for order in self._order_book['ask'] if order.qty > 0])
 
     def spread(self) -> dict or None:
-        if self.order_book['bid'] and self.order_book['ask']:
-            return {'bid': self.order_book['bid'].first.price, 'ask': self.order_book['ask'].first.price}
+        if self._order_book['bid'] and self._order_book['ask']:
+            return {'bid': self._order_book['bid'].first.price, 'ask': self._order_book['ask'].first.price}
         raise Exception(f'There no either bid or ask orders')
 
     def spread_volume(self) -> dict or None:
-        if self.order_book['bid'] and self.order_book['ask']:
-            return {'bid': self.order_book['bid'].first.qty, 'ask': self.order_book['ask'].first.qty}
+        if self._order_book['bid'] and self._order_book['ask']:
+            return {'bid': self._order_book['bid'].first.qty, 'ask': self._order_book['ask'].first.qty}
         raise Exception(f'There no either bid or ask orders')
 
     def price(self) -> float:
@@ -158,30 +165,33 @@ class BrokerImpl(Broker):
 
         if order.order_type == 'bid':
             if order.price >= ask:
-                order = self.order_book['ask'].fulfill(order, t_cost)
+                order = self._order_book['ask'].fulfill(order, t_cost)
             if order.qty > 0:
-                self.order_book['bid'].insert(order)
+                self._order_book['bid'].insert(order)
             return
 
         elif order.order_type == 'ask':
             if order.price <= bid:
-                order = self.order_book['bid'].fulfill(order, t_cost)
+                order = self._order_book['bid'].fulfill(order, t_cost)
             if order.qty > 0:
-                self.order_book['ask'].insert(order)
+                self._order_book['ask'].insert(order)
 
     def market_order(self, order: Order) -> Order:
         t_cost = self.transaction_cost
         if order.order_type == 'bid':
-            order = self.order_book['ask'].fulfill(order, t_cost)
+            order = self._order_book['ask'].fulfill(order, t_cost)
         elif order.order_type == 'ask':
-            order = self.order_book['bid'].fulfill(order, t_cost)
+            order = self._order_book['bid'].fulfill(order, t_cost)
         return order
 
     def cancel_order(self, order: Order):
         if order.order_type == 'bid':
-            self.order_book['bid'].remove(order)
+            self._order_book['bid'].remove(order)
         elif order.order_type == 'ask':
-            self.order_book['ask'].remove(order)
+            self._order_book['ask'].remove(order)
+
+    def order_book(self):
+        return self._order_book
 
 
 class Trader:
@@ -237,16 +247,16 @@ class Trader:
         :return: quantity unfulfilled
         """
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book['ask']:
+            if self.markets[_].order_book()['ask']:
                 break
         else:
             return quantity
         mn_index = 0
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book['ask'].last.price < self.markets[mn_index].order_book['ask'].last.price:
+            if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book['ask'].last.price:
                 mn_index = _
         print(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
-        order = Order(self.markets[mn_index].order_book['ask'].last.price, round(quantity), 'bid', mn_index, self)
+        order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index, self)
         return self.markets[mn_index].market_order(order).qty
 
     def _sell_market(self, quantity) -> int:
@@ -254,16 +264,16 @@ class Trader:
         :return: quantity unfulfilled
         """
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book['bid']:
+            if self.markets[_].order_book()['bid']:
                 break
         else:
             return quantity
         mn_index = 0
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book['bid'].last.price > self.markets[mn_index].order_book['bid'].last.price:
+            if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book['bid'].last.price:
                 mn_index = _
         print(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
-        order = Order(self.markets[mn_index].order_book['bid'].last.price, round(quantity), 'ask', mn_index, self)
+        order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index, self)
         return self.markets[mn_index].market_order(order).qty
 
     def _cancel_order(self, order: Order):

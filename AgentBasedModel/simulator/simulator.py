@@ -122,22 +122,22 @@ class SimulatorInfo:
         self.spreads.append((self.exchange.spread()))
         self.dividends.append(self.exchange.dividend())
         self.orders.append({
-            'quantity': {'bid': len(self.exchange.order_book['bid']), 'ask': len(self.exchange.order_book['ask'])},
+            'quantity': {'bid': len(self.exchange.order_book()['bid']), 'ask': len(self.exchange.order_book()['ask'])},
             # 'price mean': {
-            #     'bid': mean([order.price for order in self.exchange.order_book['bid']]),
-            #     'ask': mean([order.price for order in self.exchange.order_book['ask']])},
+            #     'bid': mean([order.price for order in self.exchange.order_book()['bid']]),
+            #     'ask': mean([order.price for order in self.exchange.order_book()['ask']])},
             # 'price std': {
-            #     'bid': std([order.price for order in self.exchange.order_book['bid']]),
-            #     'ask': std([order.price for order in self.exchange.order_book['ask']])},
+            #     'bid': std([order.price for order in self.exchange.order_book()['bid']]),
+            #     'ask': std([order.price for order in self.exchange.order_book()['ask']])},
             # 'volume sum': {
-            #     'bid': sum([order.qty for order in self.exchange.order_book['bid']]),
-            #     'ask': sum([order.qty for order in self.exchange.order_book['ask']])},
+            #     'bid': sum([order.qty for order in self.exchange.order_book()['bid']]),
+            #     'ask': sum([order.qty for order in self.exchange.order_book()['ask']])},
             # 'volume mean': {
-            #     'bid': mean([order.qty for order in self.exchange.order_book['bid']]),
-            #     'ask': mean([order.qty for order in self.exchange.order_book['ask']])},
+            #     'bid': mean([order.qty for order in self.exchange.order_book()['bid']]),
+            #     'ask': mean([order.qty for order in self.exchange.order_book()['ask']])},
             # 'volume std': {
-            #     'bid': std([order.qty for order in self.exchange.order_book['bid']]),
-            #     'ask': std([order.qty for order in self.exchange.order_book['ask']])}
+            #     'bid': std([order.qty for order in self.exchange.order_book()['bid']]),
+            #     'ask': std([order.qty for order in self.exchange.order_book()['ask']])}
         })
 
         # Trader Statistics

@@ -3,8 +3,6 @@ from AgentBasedModel import Broker
 from random import seed, random
 
 class FakeBroker(Broker):
-    def _not_impl(_):
-        raise Exception("Not implemented")
 
     def __init__(self, price: float or int, spread: dict or None, ):
         self.fake_price = price
@@ -36,6 +34,9 @@ class FakeBroker(Broker):
 
     def cancel_order(self, order):
         self.cancel_orders.append(order)
+
+    def order_book(self):
+        return {'bid': [], 'ask': []}
 
 def test_random1():
     broker = FakeBroker(5, {'bid': 10.0, 'ask': 9.0})

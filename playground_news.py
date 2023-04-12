@@ -1,6 +1,6 @@
-from AgentBasedModel import Simulator, Broker, Random, Fundamentalist, Chartist
+from AgentBasedModel import Simulator, Broker, Random, Fundamentalist, Chartist, ExchangeAgent
 
-xg = Broker()
+xg = ExchangeAgent()
 traders = []
 traders += [Random(xg, cash=1000) for i in range(10)]
 traders += [Fundamentalist(xg, cash=1000) for i in range(10)]

@@ -73,9 +73,9 @@ class LiquidityShock(Event):
         for _ in range(len(exchanges)):
             pseudo_trader = Trader(exchanges[_], 1e6, [int(1e4)])
             if self.dv < 0:  # buy
-                order = Order(exchanges[_].order_book['ask'].last.price, abs(self.dv), 'bid', 0, pseudo_trader)
+                order = Order(exchanges[_].order_book()['ask'].last.price, abs(self.dv), 'bid', 0, pseudo_trader)
             else:  # sell
-                order = Order(exchanges[_].order_book['bid'].last.price, abs(self.dv), 'ask', 0, pseudo_trader)
+                order = Order(exchanges[_].order_book()['bid'].last.price, abs(self.dv), 'ask', 0, pseudo_trader)
             exchanges[_].market_order(order)
 
 
