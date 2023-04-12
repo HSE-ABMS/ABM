@@ -52,10 +52,10 @@ class MarketPriceShock(Event):
     def call(self, it: int):
         if super().call(it):
             return
-
-        book = self.simulator.exchange.order_book
-        for order in chain(*book.values()):
-            order.price += round(self.dp, 1)
+        for _ in range(len(self.simulator.exchanges)):
+            book = self.simulator.exchanges[_].order_book
+            for order in chain(*book.values()):
+                order.price += round(self.dp, 1)
 
 
 class LiquidityShock(Event):
@@ -69,13 +69,14 @@ class LiquidityShock(Event):
     def call(self, it: int):
         if super().call(it):
             return
-        exchange = self.simulator.exchange
-        pseudo_trader = Trader(exchange, 1e6, int(1e4))
-        if self.dv < 0:  # buy
-            order = Order(exchange.order_book['ask'].last.price, abs(self.dv), 'bid', pseudo_trader)
-        else:  # sell
-            order = Order(exchange.order_book['bid'].last.price, abs(self.dv), 'ask', pseudo_trader)
-        exchange.market_order(order)
+        exchanges = self.simulator.exchanges
+        for _ in range(len(exchanges)):
+            pseudo_trader = Trader(exchanges[_], 1e6, [int(1e4)])
+            if self.dv < 0:  # buy
+                order = Order(exchanges[_].order_book['ask'].last.price, abs(self.dv), 'bid', 0, pseudo_trader)
+            else:  # sell
+                order = Order(exchanges[_].order_book['bid'].last.price, abs(self.dv), 'ask', 0, pseudo_trader)
+            exchanges[_].market_order(order)
 
 
 class InformationShock(Event):
@@ -90,11 +91,12 @@ class InformationShock(Event):
         if super().call(it):
             return
         for trader in self.simulator.traders:
-            trader.access = self.access
+            if type(trader) in (Universalist, Fundamentalist):
+                trader.access = self.access
 
 
 class MarketMakerIn(Event):
-    def __init__(self, it, cash: float = 10**3, assets: int = 0, softlimit: int = 100):
+    def __init__(self, it, cash: float = 10 ** 3, assets: int = 0, softlimit: int = 100):
         super().__init__(it)
         self.cash = cash
         self.assets = assets

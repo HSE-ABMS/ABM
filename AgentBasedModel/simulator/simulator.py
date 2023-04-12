@@ -1,3 +1,5 @@
+from typing import List
+
 from AgentBasedModel.agents import ExchangeAgent, Universalist, Chartist, Fundamentalist
 from AgentBasedModel.utils.math import mean, std, difference, rolling
 import random
@@ -8,18 +10,24 @@ class Simulator:
     """
     Simulator is responsible for launching agents' actions and executing scenarios
     """
-    def __init__(self, exchange: ExchangeAgent = None, traders: list = None, events: list = None):
-        self.exchange = exchange
+
+    def __init__(self, exchanges: List[ExchangeAgent] = None, traders: list = None, events: list = None):
+        self.exchanges = exchanges
         self.events = [event.link(self) for event in events] if events else None  # link all events to simulator
         self.traders = traders
-        self.info = SimulatorInfo(self.exchange, self.traders)  # links to existing objects
+        self.info = [SimulatorInfo(self.exchanges[_], self.traders) for _ in
+                     range(len(self.exchanges))]  # links to existing objects
 
+    # TODO:
     def _payments(self):
         for trader in self.traders:
-            # Dividend payments
-            trader.cash += trader.assets * self.exchange.dividend()  # allow negative dividends
-            # Interest payment
-            trader.cash += trader.cash * self.exchange.risk_free  # allow risk-free loan
+            for _ in range(len(self.exchanges)):
+                for __ in range(len(trader.markets)):
+                    if trader.markets[__].id == self.exchanges[_].id:
+                        # Dividend payments
+                        trader.cash += trader.assets[__] * self.exchanges[_].dividend()  # allow negative dividends
+                # Interest payment
+                trader.cash += trader.cash * self.exchanges[_].risk_free  # allow risk-free loan
 
     def simulate(self, n_iter: int, silent=False) -> object:
         for it in tqdm(range(n_iter), desc='Simulation', disable=silent):
@@ -29,7 +37,8 @@ class Simulator:
                     event.call(it)
 
             # Capture current info
-            self.info.capture()
+            for _ in range(len(self.info)):
+                self.info[_].capture()
 
             # Change behaviour
             for trader in self.traders:
@@ -42,7 +51,8 @@ class Simulator:
 
             # Payments and dividends
             self._payments()  # pay dividends
-            self.exchange.generate_dividend()  # generate next dividends
+            for _ in range(len(self.exchanges)):  # generate next dividends
+                self.exchanges[_].generate_dividend()
 
         return self
 
@@ -145,12 +155,12 @@ class SimulatorInfo:
         divs.extend(self.exchange.dividend(access)[1:access])  # add not recorded future divs
         r = self.exchange.risk_free
 
-        return [Fundamentalist.evaluate(divs[i:i+access], r) for i in range(n)]
+        return [Fundamentalist.evaluate(divs[i:i + access], r) for i in range(n)]
 
     def stock_returns(self, roll: int = None) -> list or float:
         p = self.prices
         div = self.dividends
-        r = [(p[i+1] - p[i]) / p[i] + div[i] / p[i] for i in range(len(p) - 1)]
+        r = [(p[i + 1] - p[i]) / p[i] + div[i] / p[i] for i in range(len(p) - 1)]
         return rolling(r, roll) if roll else mean(r)
 
     def abnormal_returns(self, roll: int = None) -> list:
@@ -162,12 +172,12 @@ class SimulatorInfo:
         if window is None:
             return std(self.stock_returns())
         n = len(self.stock_returns(1))
-        return [std(self.stock_returns(1)[i:i+window]) for i in range(n - window)]
+        return [std(self.stock_returns(1)[i:i + window]) for i in range(n - window)]
 
     def price_volatility(self, window: int = None) -> list or float:
         if window is None:
             return std(self.prices)
-        return [std(self.prices[i:i+window]) for i in range(len(self.prices) - window)]
+        return [std(self.prices[i:i + window]) for i in range(len(self.prices) - window)]
 
     def liquidity(self, roll: int = None) -> list or float:
         n = len(self.prices)
