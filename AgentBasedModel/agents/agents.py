@@ -85,6 +85,9 @@ class ExchangeAgent:
             return {'bid': self.order_book['bid'].first.price, 'ask': self.order_book['ask'].first.price}
         raise Exception(f'There no either bid or ask orders')
 
+    def ask_bid_exist(self):
+        return self.order_book['bid'] and self.order_book['ask']
+
     def spread_volume(self) -> dict or None:
         """
         **(UNUSED)** Returns best bid and ask volumes as dictionary
@@ -152,6 +155,13 @@ class ExchangeAgent:
         elif order.order_type == 'ask':
             self.order_book['ask'].remove(order)
 
+class FakeExchangeAgent(ExchangeAgent):
+    def market_order(self, order):
+        pass
+    def cancel_order(self, order):
+        pass
+    def limit_order(self, order):
+        pass
 
 class Trader:
     """
@@ -617,6 +627,8 @@ class NumericalFundamentalist(AwareTrader):
         self.expectation = expectation
 
     def call(self):
+        if self.market.ask_bid_exist() is None:
+            exit
         news = self.info_flow.pull()
         if type(news) is CategoricalNews:
             return
