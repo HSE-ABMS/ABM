@@ -4,12 +4,14 @@ from AgentBasedModel.utils import Order, OrderList
 from AgentBasedModel.utils.math import exp, mean
 import random
 
+class Exchange:
+    pass
 
-class ExchangeAgent:
+
+class Broker:
     """
-    ExchangeAgent implements automatic orders handling within the order book
+    Broker implements automatic orders handling within the order book
     """
-    id = 0
 
     def __init__(self, price: float or int = 100, std: float or int = 25, volume: int = 1000, rf: float = 5e-4,
                  transaction_cost: float = 0):
@@ -22,25 +24,13 @@ class ExchangeAgent:
         :param rf: risk-free rate
         :param transaction_cost: transaction cost on operations for traders
         """
-        self.id = ExchangeAgent.id
-        self.name = f'ExchangeAgent{self.id}'
-        ExchangeAgent.id += 1
-        self.volume = volume
-        self.order_book = {'bid': OrderList('bid'), 'ask': OrderList('ask')}
-        self.dividend_book = list()  # act like queue
-        self.risk_free = rf
-        self.transaction_cost = transaction_cost
-        self._fill_book(price, std, volume, rf * price)  # initialise both order book and dividend book
-        print(f"{self.name}")
+        raise NotImplemented("Method not implemented for Broker!")
 
     def generate_dividend(self):
         """
         Add new dividend to queue and pop last
         """
-        # Generate future dividend
-        d = self.dividend_book[-1] * self._next_dividend()
-        self.dividend_book.append(max(d, 0))  # dividend > 0
-        self.dividend_book.pop(0)
+        raise NotImplemented("Method not implemented for Broker!")
 
     def _fill_book(self, price, std, volume, div: float = 0.05):
         """
@@ -52,6 +42,76 @@ class ExchangeAgent:
 
         **Dividend book:** add 100 dividends using *_next_dividend* method.
         """
+        raise NotImplemented("Method not implemented for Broker!")
+
+    def _clear_book(self):
+        """
+        **(UNUSED)** Clear order book from orders with 0 quantity.
+        """
+        raise NotImplemented("Method not implemented for Broker!")
+
+    def spread(self) -> dict or None:
+        """
+        Returns best bid and ask prices as dictionary
+
+        :return: {'bid': float, 'ask': float}
+        """
+        raise NotImplemented("Method not implemented for Broker!")
+
+    def spread_volume(self) -> dict or None:
+        """
+        **(UNUSED)** Returns best bid and ask volumes as dictionary
+
+        :return: {'bid': float, 'ask': float}
+        """
+        raise NotImplemented("Method not implemented for Broker!")
+
+    def price(self) -> float:
+        """
+        Returns current stock price as mean between best bid and ask prices
+        """
+        raise NotImplemented("Method not implemented for Broker!")
+
+    def dividend(self, access: int = None) -> list or float:
+        """
+        Returns either current dividend or *access* future dividends (if called by trader)
+
+        :param access: the number of future dividends accessed by a trader
+        """
+        raise NotImplemented("Method not implemented for Broker!")
+
+    def limit_order(self, order: Order):
+        raise NotImplemented("Method not implemented for Broker!")
+
+    def market_order(self, order: Order) -> Order:
+        raise NotImplemented("Method not implemented for Broker!")
+
+    def cancel_order(self, order: Order):
+        raise NotImplemented("Method not implemented for Broker!")
+
+class BrokerImpl(Broker):
+    id = 0
+
+    def __init__(self, price: float or int = 100, std: float or int = 25, volume: int = 1000, rf: float = 5e-4,
+                 transaction_cost: float = 0):
+        self.id = Broker.id
+        self.name = f'ExchangeAgent{self.id}'
+        Broker.id += 1
+        self.volume = volume
+        self.order_book = {'bid': OrderList('bid'), 'ask': OrderList('ask')}
+        self.dividend_book = list()  # act like queue
+        self.risk_free = rf
+        self.transaction_cost = transaction_cost
+        self._fill_book(price, std, volume, rf * price)  # initialise both order book and dividend book
+        print(f"{self.name}")
+
+    def generate_dividend(self):
+        # Generate future dividend
+        d = self.dividend_book[-1] * self._next_dividend()
+        self.dividend_book.append(max(d, 0))  # dividend > 0
+        self.dividend_book.pop(0)
+
+    def _fill_book(self, price, std, volume, div: float = 0.05):
         # Order book
         prices1 = [round(random.normalvariate(price - std, std), 1) for _ in range(volume // 2)]
         prices2 = [round(random.normalvariate(price + std, std), 1) for _ in range(volume // 2)]
@@ -71,48 +131,26 @@ class ExchangeAgent:
             div *= self._next_dividend()
 
     def _clear_book(self):
-        """
-        **(UNUSED)** Clear order book from orders with 0 quantity.
-        """
         self.order_book['bid'] = OrderList.from_list([order for order in self.order_book['bid'] if order.qty > 0])
         self.order_book['ask'] = OrderList.from_list([order for order in self.order_book['ask'] if order.qty > 0])
 
     def spread(self) -> dict or None:
-        """
-        Returns best bid and ask prices as dictionary
-
-        :return: {'bid': float, 'ask': float}
-        """
         if self.order_book['bid'] and self.order_book['ask']:
             return {'bid': self.order_book['bid'].first.price, 'ask': self.order_book['ask'].first.price}
         raise Exception(f'There no either bid or ask orders')
 
     def spread_volume(self) -> dict or None:
-        """
-        **(UNUSED)** Returns best bid and ask volumes as dictionary
-
-        :return: {'bid': float, 'ask': float}
-        """
         if self.order_book['bid'] and self.order_book['ask']:
             return {'bid': self.order_book['bid'].first.qty, 'ask': self.order_book['ask'].first.qty}
         raise Exception(f'There no either bid or ask orders')
 
     def price(self) -> float:
-        """
-        Returns current stock price as mean between best bid and ask prices
-        """
-
         spread = self.spread()
         if spread:
             return round((spread['bid'] + spread['ask']) / 2, 1)
         raise Exception(f'Price cannot be determined, since no orders either bid or ask')
 
     def dividend(self, access: int = None) -> list or float:
-        """
-        Returns either current dividend or *access* future dividends (if called by trader)
-
-        :param access: the number of future dividends accessed by a trader
-        """
         if access is None:
             return self.dividend_book[0]
         return self.dividend_book[:access]
@@ -161,7 +199,7 @@ class Trader:
     """
     id = 0
 
-    def __init__(self, markets: List[ExchangeAgent], cash: float or int, assets: List[int]):
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int]):
         """
         Trader that is activated on call to perform action
 
@@ -247,7 +285,7 @@ class Random(Trader):
     Random creates noisy orders to recreate trading in real environment.
     """
 
-    def __init__(self, markets: List[ExchangeAgent], cash: float or int, assets: List[int]):
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int]):
         super().__init__(markets, cash, assets)
         self.type = 'Random'
 
@@ -332,7 +370,7 @@ class Fundamentalist(Trader):
     Fundamentalist evaluate stock value using Constant Dividend Model. Then places orders accordingly
     """
 
-    def __init__(self, markets: List[ExchangeAgent], cash: float or int, assets: List[int], access: int = 1):
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int], access: int = 1):
         """
         :param markets: exchange agent link
         :param cash: number of cash
@@ -426,7 +464,7 @@ class Chartist(Trader):
     propagation among other chartists, current price changes
     """
 
-    def __init__(self, markets: List[ExchangeAgent], cash: float or int, assets: List[int]):
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int]):
         """
         :param markets: exchange agent link
         :param cash: number of cash
@@ -513,7 +551,7 @@ class Universalist(Fundamentalist, Chartist):
     Universalist mixes Fundamentalist, Chartist trading strategies allowing to change one strategy to another
     """
 
-    def __init__(self, markets: List[ExchangeAgent], cash: float or int, assets: List[int], access: int = 1):
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int], access: int = 1):
         """
         :param markets: exchange agent link
         :param cash: number of cash
@@ -594,7 +632,7 @@ class MarketMaker(Trader):
     spread between bid and ask prices, and maintain its assets to cash ratio in balance.
     """
 
-    def __init__(self, markets: List[ExchangeAgent], cash: float, assets: List[int], softlimit: int = 100):
+    def __init__(self, markets: List[Broker], cash: float, assets: List[int], softlimit: int = 100):
         super().__init__(markets, cash, assets)
         self.type = 'Market Maker'
         self.softlimit = softlimit

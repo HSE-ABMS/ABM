@@ -1,2 +1,2 @@
-from AgentBasedModel.agents.agents import ExchangeAgent, Trader, Random, Chartist, Fundamentalist, Universalist,\
+from AgentBasedModel.agents.agents import Broker, Trader, Random, Chartist, Fundamentalist, Universalist,\
     MarketMaker
