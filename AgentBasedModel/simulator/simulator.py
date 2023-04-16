@@ -1,6 +1,6 @@
 from typing import List
 
-from AgentBasedModel.agents import ExchangeAgent, Universalist, Chartist, Fundamentalist
+from AgentBasedModel.agents import Broker, Universalist, Chartist, Fundamentalist
 from AgentBasedModel.utils.math import mean, std, difference, rolling
 import random
 from tqdm import tqdm
@@ -11,7 +11,7 @@ class Simulator:
     Simulator is responsible for launching agents' actions and executing scenarios
     """
 
-    def __init__(self, exchanges: List[ExchangeAgent] = None, traders: list = None, events: list = None):
+    def __init__(self, exchanges: List[Broker] = None, traders: list = None, events: list = None):
         self.exchanges = exchanges
         self.events = [event.link(self) for event in events] if events else None  # link all events to simulator
         self.traders = traders
@@ -62,7 +62,7 @@ class SimulatorInfo:
     SimulatorInfo is responsible for capturing data during simulating
     """
 
-    def __init__(self, exchange: ExchangeAgent = None, traders: list = None):
+    def __init__(self, exchange: Broker = None, traders: list = None):
         self.exchange = exchange
         self.traders = {t.id: t for t in traders}
 
@@ -122,22 +122,22 @@ class SimulatorInfo:
         self.spreads.append((self.exchange.spread()))
         self.dividends.append(self.exchange.dividend())
         self.orders.append({
-            'quantity': {'bid': len(self.exchange.order_book['bid']), 'ask': len(self.exchange.order_book['ask'])},
+            'quantity': {'bid': len(self.exchange.order_book()['bid']), 'ask': len(self.exchange.order_book()['ask'])},
             # 'price mean': {
-            #     'bid': mean([order.price for order in self.exchange.order_book['bid']]),
-            #     'ask': mean([order.price for order in self.exchange.order_book['ask']])},
+            #     'bid': mean([order.price for order in self.exchange.order_book()['bid']]),
+            #     'ask': mean([order.price for order in self.exchange.order_book()['ask']])},
             # 'price std': {
-            #     'bid': std([order.price for order in self.exchange.order_book['bid']]),
-            #     'ask': std([order.price for order in self.exchange.order_book['ask']])},
+            #     'bid': std([order.price for order in self.exchange.order_book()['bid']]),
+            #     'ask': std([order.price for order in self.exchange.order_book()['ask']])},
             # 'volume sum': {
-            #     'bid': sum([order.qty for order in self.exchange.order_book['bid']]),
-            #     'ask': sum([order.qty for order in self.exchange.order_book['ask']])},
+            #     'bid': sum([order.qty for order in self.exchange.order_book()['bid']]),
+            #     'ask': sum([order.qty for order in self.exchange.order_book()['ask']])},
             # 'volume mean': {
-            #     'bid': mean([order.qty for order in self.exchange.order_book['bid']]),
-            #     'ask': mean([order.qty for order in self.exchange.order_book['ask']])},
+            #     'bid': mean([order.qty for order in self.exchange.order_book()['bid']]),
+            #     'ask': mean([order.qty for order in self.exchange.order_book()['ask']])},
             # 'volume std': {
-            #     'bid': std([order.qty for order in self.exchange.order_book['bid']]),
-            #     'ask': std([order.qty for order in self.exchange.order_book['ask']])}
+            #     'bid': std([order.qty for order in self.exchange.order_book()['bid']]),
+            #     'ask': std([order.qty for order in self.exchange.order_book()['ask']])}
         })
 
         # Trader Statistics

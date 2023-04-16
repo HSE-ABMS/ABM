@@ -7,7 +7,7 @@ from AgentBasedModel.events.events import LiquidityShock
 def generateAgents(minVolume, maxVolume, exchangeCount):
     exchangesAgents = []
     for _ in range(exchangeCount):
-        exchangesAgents.append(ExchangeAgent(volume=random.randint(minVolume, maxVolume)))
+        exchangesAgents.append(Broker(volume=random.randint(minVolume, maxVolume)))
     return exchangesAgents
 
 
