@@ -1,6 +1,7 @@
 from AgentBasedModel import Random, Simulator
 from AgentBasedModel import Broker
-from AgentBasedModel import Trader
+from AgentBasedModel import Trader, AwareTrader, AdaptiveNumericalFundamentalist, NumericalFundamentalist
+from AgentBasedModel import NumericalNews, InfoFlow
 from random import seed, random
 
 class FakeBroker(Broker):
@@ -65,3 +66,22 @@ def test_faketrader_order_count_2():
     Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10)
     assert len(broker.limit_orders) == 200
     assert len(broker.market_orders) == 0
+
+def test_numfund_0_orders():
+    broker = FakeBroker(10, {'bid': 10.0, 'ask': 9.0})
+    seed(42)
+    traders = [NumericalFundamentalist(11, 0, [broker], 100, [5])]
+    Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10, news=None)
+    assert len(broker.limit_orders) == 0
+
+def test_numfund_1_order():
+    broker = FakeBroker(10, {'bid': 10.0, 'ask': 9.0})
+    seed(42)
+    traders = [NumericalFundamentalist(11, 0, [broker], 100, [5])]
+    news = InfoFlow()
+    news.put(5, NumericalNews(15))
+    Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10, news=news)
+    assert len(broker.limit_orders) == 1
+    assert broker.limit_orders[0].order_type == 'bid'
+
+test_numfund_1_order()

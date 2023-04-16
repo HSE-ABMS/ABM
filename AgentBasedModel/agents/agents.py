@@ -2,6 +2,7 @@ from typing import List
 
 from AgentBasedModel.utils import Order, OrderList, logging
 from AgentBasedModel.utils.math import exp, mean
+from AgentBasedModel.news import InfoFlow
 import random
 from abc import abstractmethod
 
@@ -52,6 +53,7 @@ class Broker:
     def price(self) -> float:
         """
         Returns current stock price as mean between best bid and ask prices
+        If price cannot be determined, None is returned
         """
         self._not_impl()
 
@@ -147,7 +149,8 @@ class ExchangeAgent(Broker):
         spread = self.spread()
         if spread:
             return round((spread['bid'] + spread['ask']) / 2, 1)
-        raise Exception(f'Price cannot be determined, since no orders either bid or ask')
+        # raise Exception(f'Price cannot be determined, since no orders either bid or ask')
+        return None
 
     def dividend(self, access: int = None) -> list or float:
         if access is None:
@@ -723,3 +726,63 @@ class MarketMaker(Trader):
     #             self._sell_limit(ask_volume, ask_price, i)
     #         self.panic = False
     #     self.prev_cash = self.cash
+
+from queue import Queue
+from AgentBasedModel.news.news import News, CategoricalNews, NumericalNews
+
+class AwareTrader(Trader):
+    def __init__(self, hesitation: float, delay: int, markets: List[Broker], cash: float or int, assets: List[int]):
+        super().__init__(markets, cash, assets)
+        self.info_flow = InfoFlow()
+        # this is reciprocal of the share of cash/assets,
+        # that the agent is willing to offer at a time
+        self.hesitation = hesitation
+        self.delay = delay
+
+    def inform(self, news):
+        self.info_flow.put(self.delay, news)
+
+
+class NumericalFundamentalist(AwareTrader):
+    def __init__(self, expectation: float, delay: int, markets: List[Broker], cash: float or int, assets: List[int]):
+        super().__init__(6.0, delay, markets, cash, assets)
+        self.expectation = expectation
+
+    def call(self):
+        prices = list(filter(lambda p: p is not None, map(lambda m: m.price(), self.markets)))
+        if len(prices) == 0:
+            return
+        price = mean(prices)
+        news = self.info_flow.pull()
+        if type(news) is CategoricalNews:
+            return
+        if type(news) is NumericalNews:
+            if news.performance > self.expectation:
+                self._sell_limit(sum(self.assets) // self.hesitation, price)
+            else:
+                q = round(self.cash / self.hesitation / price)
+                if q > 0:
+                    self._buy_limit(q, price)
+
+
+class AdaptiveNumericalFundamentalist(AwareTrader):
+    def __init__(self, phi: float, expectation: float, delay: int, markets: List[Broker], cash: float or int, assets: List[int]):
+        super().__init__(6.0, delay, markets, cash, assets)
+        self.expectation = expectation
+        self.phi = phi
+
+    @staticmethod
+    def smooth(coef, old, new):
+        return old * (1 - coef) + new * coef
+
+    def call(self):
+        news = self.info_flow.pull()
+        if type(news) is not NumericalNews:
+            return
+        if news.performance > self.expectation:
+            self._sell_market(self.assets // self.hesitation)
+        else:
+            q = round(self.cash / self.hesitation / self.market.price())
+            if q > 0:
+                self._buy_market(q)
+        self.expectation = AdaptiveNumericalFundamentalist.smooth(self.phi, self.expectation, news.performance)
