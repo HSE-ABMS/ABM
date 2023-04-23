@@ -1,4 +1,4 @@
-from AgentBasedModel import Simulator, ExchangeAgent, Random, Fundamentalist, Chartist
+from AgentBasedModel import Simulator, Broker, Random, Fundamentalist, Chartist, ExchangeAgent
 
 xg = ExchangeAgent()
 traders = []

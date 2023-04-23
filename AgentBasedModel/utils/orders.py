@@ -7,14 +7,15 @@ class Order:
     """
     order_id = 0
 
-    def __init__(self, price, qty, order_type, trader_link=None):
+    def __init__(self, price, qty, order_type, market_id, trader_link=None):
         # Properties
         self.price = price
         self.qty = qty
         self.order_type = order_type
         self.trader = trader_link
         self.order_id = Order.order_id
-
+        self.market_id = market_id
+        print(f"New ORDER {self.order_id} for {self.market_id} {self.trader.type + ' ' + str(self.trader.id) if self.trader else None}")
         # Connections
         self.left = None
         self.right = None
@@ -73,17 +74,19 @@ class Order:
 
     def to_dict(self) -> dict:
         return {'price': self.price, 'qty': self.qty, 'order_type': self.order_type,
-                'trader_link': self.trader}
+                'market_id': self.market_id, 'trader_link': self.trader}
 
     @classmethod
     def from_dict(cls, order_dict):
-        return Order(order_dict['price'], order_dict['qty'], order_dict['order_type'], order_dict.get('trader_link'))
+        return Order(order_dict['price'], order_dict['qty'], order_dict['order_type'], order_dict['market_id'],
+                     order_dict.get('trader_link'))
 
 
 class OrderIter:
     """
     Iterator class for OrderList
     """
+
     def __init__(self, order_list):
         self.order = order_list.first
 
@@ -105,6 +108,7 @@ class OrderList:
 
     insert, fulfill (for large qty): complexity O(n)
     """
+
     def __init__(self, order_type: str):
         self.first = None
         self.last = None
@@ -236,18 +240,22 @@ class OrderList:
             if order.order_type == 'bid':
                 if order.trader is not None:
                     order.trader.cash -= tmp_price * tmp_qty * (1 + t_cost)
-                    order.trader.assets += tmp_qty
+                    order.trader.assets[order.market_id] += tmp_qty
+                    print(f"{order.trader.name} ({order.trader.type}) MarketOrder(BID) {order.market_id}")
                 if val.trader is not None:
                     val.trader.cash += tmp_price * tmp_qty * (1 - t_cost)
-                    val.trader.assets -= tmp_qty
+                    print(f"{val.trader.name} ({val.trader.type}) MarketOrder(BID) {order.market_id}")
+                    val.trader.assets[val.market_id] -= tmp_qty
 
             if order.order_type == 'ask':
                 if order.trader is not None:
                     order.trader.cash += tmp_price * tmp_qty * (1 - t_cost)
-                    order.trader.assets -= tmp_qty
+                    print(f"{order.trader.name} ({order.trader.type}) MarketOrder(ASK) {order.market_id}")
+                    order.trader.assets[order.market_id] -= tmp_qty
                 if val.trader is not None:
                     val.trader.cash -= tmp_price * tmp_qty * (1 + t_cost)
-                    val.trader.assets += tmp_qty
+                    print(f"{val.trader.name} ({val.trader.type}) MarketOrder(ASK) {order.market_id}")
+                    val.trader.assets[val.market_id] += tmp_qty
 
             # Clear remaining
             if val.qty == 0:
@@ -258,7 +266,7 @@ class OrderList:
     @classmethod
     def from_list(cls, order_list, sort=False):
         order_list = [Order(order['price'], order['qty'], order['order_type'],
-                            order.get('trader_link')) for order in order_list]
+                            order['market_id'], order.get('trader_link')) for order in order_list]
         order_list_obj = OrderList(order_list[0].order_type)
         if sort:
             for order in order_list:
