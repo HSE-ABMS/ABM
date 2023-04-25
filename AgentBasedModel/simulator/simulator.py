@@ -46,7 +46,8 @@ class Simulator:
 
             # Change behaviour
             for trader in self.traders:
-                trader.refresh(self.info)
+                for info in self.info:
+                    trader.refresh(info)
 
             # Call Traders
             random.shuffle(self.traders)

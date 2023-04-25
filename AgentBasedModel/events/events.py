@@ -81,7 +81,7 @@ class MarketPriceShock(Event):
     def call(self, it: int):
         if super().call(it):
             return
-        book = self.simulator.exchanges[self.stock_id].order_book
+        book = self.simulator.exchanges[self.stock_id].order_book()
         for order in chain(*book.values()):
             order.price += round(self.dp, 1)
 

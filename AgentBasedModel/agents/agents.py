@@ -1,6 +1,6 @@
 from typing import List
 
-from AgentBasedModel.utils import Order, OrderList
+from AgentBasedModel.utils import Order, OrderList, logging
 from AgentBasedModel.utils.math import exp, mean
 import random
 from abc import abstractmethod
@@ -254,7 +254,7 @@ class Trader:
             return quantity
         mn_index = 0
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book['ask'].last.price:
+            if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book()['ask'].last.price:
                 mn_index = _
         logging.Logger.info(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index, self)
@@ -271,7 +271,7 @@ class Trader:
             return quantity
         mn_index = 0
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book['bid'].last.price:
+            if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book()['bid'].last.price:
                 mn_index = _
         logging.Logger.info(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index, self)
@@ -281,6 +281,9 @@ class Trader:
         self.markets[order.market_id].cancel_order(order)
         self.orders.remove(order)
 
+    @abstractmethod
+    def refresh(self, info):
+        pass
 
 class Random(Trader):
     """
