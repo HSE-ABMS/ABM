@@ -34,7 +34,7 @@ class Simulator:
                 # Interest payment
                 trader.cash += trader.cash * self.exchanges[_].risk_free  # allow risk-free loan
 
-    def simulate(self, n_iter: int, news: InfoFlow = None, silent=False) -> object:
+    def simulate(self, n_iter: int, news: InfoFlow = None, silent=True) -> object:
         for it in tqdm(range(n_iter), desc='Simulation', disable=silent):
             # Call scenario
             if self.events:
