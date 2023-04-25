@@ -15,10 +15,14 @@ class Simulator:
         self.exchanges = exchanges
         self.events = [event.link(self) for event in events] if events else None  # link all events to simulator
         self.traders = traders
-        self.info = [SimulatorInfo(self.exchanges[_], self.traders) for _ in
-                     range(len(self.exchanges))]  # links to existing objects
+        self.info = [
+            SimulatorInfo(
+                self.exchanges[_],
+                self.traders,
+                list(filter(lambda event: event.stock_id == _, events))
+            ) for _ in range(len(self.exchanges))
+        ]  # links to existing objects
 
-    # TODO:
     def _payments(self):
         for trader in self.traders:
             for _ in range(len(self.exchanges)):
@@ -62,7 +66,7 @@ class SimulatorInfo:
     SimulatorInfo is responsible for capturing data during simulating
     """
 
-    def __init__(self, exchange: Broker = None, traders: list = None):
+    def __init__(self, exchange: Broker = None, traders: list = None, events: list = None):
         self.exchange = exchange
         self.traders = {t.id: t for t in traders}
 
@@ -71,7 +75,7 @@ class SimulatorInfo:
         self.spreads = list()  # bid-ask spreads
         self.dividends = list()  # dividend paid at each iteration
         self.orders = list()  # order book statistics
-
+        self.events = events
         # Agent statistics
         self.equities = list()  # agent: equity
         self.cash = list()  # agent: cash

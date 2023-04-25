@@ -90,6 +90,7 @@ class ExchangeAgent(Broker):
         self.risk_free = rf
         self.transaction_cost = transaction_cost
         self._fill_book(price, std, volume, rf * price)  # initialise both order book and dividend book
+        logging.Logger.info(f"{self.name}")
 
     def generate_dividend(self):
         # Generate future dividend
@@ -218,7 +219,7 @@ class Trader:
 
         self.cash = cash
         self.assets = assets
-        print(f"{self.name} {len(assets)}")
+        logging.Logger.info(f"{self.name} {len(assets)}")
 
     def __str__(self) -> str:
         return f'{self.name} ({self.type})'
@@ -255,7 +256,7 @@ class Trader:
         for _ in range(len(self.markets)):
             if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book['ask'].last.price:
                 mn_index = _
-        print(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
+        logging.Logger.info(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index, self)
         return self.markets[mn_index].market_order(order).qty
 
@@ -272,7 +273,7 @@ class Trader:
         for _ in range(len(self.markets)):
             if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book['bid'].last.price:
                 mn_index = _
-        print(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
+        logging.Logger.info(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index, self)
         return self.markets[mn_index].market_order(order).qty
 
@@ -280,9 +281,6 @@ class Trader:
         self.markets[order.market_id].cancel_order(order)
         self.orders.remove(order)
 
-    @abstractmethod
-    def refresh(self, info):
-        pass
 
 class Random(Trader):
     """
@@ -549,8 +547,6 @@ class Chartist(Trader):
             if prob > random.random():
                 self.sentiment = 'Optimistic'
 
-    def refresh(self, info):
-        self.change_sentiment(info)
 
 class Universalist(Fundamentalist, Chartist):
     """
@@ -640,32 +636,87 @@ class MarketMaker(Trader):
     spread between bid and ask prices, and maintain its assets to cash ratio in balance.
     """
 
-    def __init__(self, markets: List[Broker], cash: float, assets: List[int], softlimit: int = 100):
+    def __init__(self, markets: List[Broker], cash: float, assets: List[int], softlimits: List[int] = None):
         super().__init__(markets, cash, assets)
+        if softlimits is None:
+            softlimits = [100] * len(self.markets)
+        self.softlimits = softlimits
         self.type = 'Market Maker'
-        self.softlimit = softlimit
-        self.ul = softlimit
-        self.ll = -softlimit
+        self.uls = self.softlimits
+        self.lls = [-softlimit for softlimit in self.softlimits]
         self.panic = False
+        self.prev_cash = cash
 
     def call(self):
+        logging.Logger.info(f"Market Maker {self.id} PnL {self.cash - self.prev_cash}. Cash: {self.cash}")
         # Clear previous orders
         for order in self.orders.copy():
             self._cancel_order(order)
 
-        spread = self.market.spread()
-
-        # Calculate bid and ask volume
-        bid_volume = max(0., self.ul - 1 - self.assets)
-        ask_volume = max(0., self.assets - self.ll - 1)
+        # Calculate total bid and ask volume for all markets
+        total_bid_volume = 0
+        total_ask_volume = 0
+        for i in range(len(self.markets)):
+            bid_volume = max(0, (self.uls[i] - 1 - self.assets[i]) // 2)
+            ask_volume = max(0, (self.assets[i] - 1 - self.uls[i]) // 2)
+            total_bid_volume += bid_volume
+            total_ask_volume += ask_volume
 
         # If in panic state we only either sell or buy commodities
-        if not bid_volume or not ask_volume:
+        if not total_bid_volume or not total_ask_volume:
             self.panic = True
-            self._buy_market((self.ul + self.ll) / 2 - self.assets) if ask_volume is None else None
-            self._sell_market(self.assets - (self.ul + self.ll) / 2) if bid_volume is None else None
+            self._buy_market(
+                sum(self.lls[i] + self.lls[i] for i in range(len(self.markets)))) if total_ask_volume == 0 else None
+            self._sell_market((sum(self.assets))) if total_bid_volume == 0 else None
         else:
+            # Calculate spread and price offset for each market
+            for i in range(len(self.markets)):
+                spread = self.markets[i].spread()
+                base_offset = min(1, (spread['ask'] - spread['bid']) * (self.assets[i] / self.lls[i]))
+                bid_volume = max(0, (self.uls[i] - 1 - self.assets[i]) // 2)
+                ask_volume = max(0, (self.assets[i] - 1 - self.lls[i]) // 2)
+                bid_price = spread['bid'] + base_offset
+                ask_price = spread['ask'] - base_offset
+                self._buy_limit(bid_volume, bid_price, i)
+                self._sell_limit(ask_volume, ask_price, i)
             self.panic = False
-            base_offset = -((spread['ask'] - spread['bid']) * (self.assets / self.softlimit))  # Price offset
-            self._buy_limit(bid_volume, spread['bid'] - base_offset - .1)  # BID
-            self._sell_limit(ask_volume, spread['ask'] + base_offset + .1)  # ASK
+        self.prev_cash = self.cash
+    # def call(self):
+    #     logging.LOGGER.info("PnL", self.cash - self.prev_cash, f"{self.cash}")
+    #     # Clear previous orders
+    #     for order in self.orders.copy():
+    #         self._cancel_order(order)
+    #
+    #     # Calculate total bid and ask volume for all markets
+    #     total_bid_volume = 0
+    #     total_ask_volume = 0
+    #     for i in range(len(self.markets)):
+    #         bid_volume = max(0, (self.uls[i] - 1 - self.assets[i]) // 2)
+    #         ask_volume = max(0, (self.assets[i] - 1 - self.lls[i]) // 2)
+    #         total_bid_volume += bid_volume
+    #         total_ask_volume += ask_volume
+    #
+    #     # If in panic state we only either sell or buy commodities
+    #     if not total_bid_volume or not total_ask_volume:
+    #         self.panic = True
+    #         if total_ask_volume == 0:
+    #             # Sell all assets
+    #             sell_volume = sum(self.assets)
+    #             self._sell_market(sell_volume)
+    #         if total_bid_volume == 0:
+    #             # Buy as much as possible based on soft limits
+    #             buy_volume = sum(self.uls) + sum(self.lls)
+    #             self._buy_market(buy_volume)
+    #     else:
+    #         # Calculate spread and price offset for each market
+    #         for i in range(len(self.markets)):
+    #             spread = self.markets[i].spread()
+    #             base_offset = min(1, (spread['ask'] - spread['bid']) * (self.assets[i] / self.lls[i]))
+    #             bid_volume = max(0, (self.uls[i] - 1 - self.assets[i]) // 2)
+    #             ask_volume = max(0, (self.assets[i] - 1 - self.lls[i]) // 2)
+    #             bid_price = spread['bid'] + base_offset
+    #             ask_price = spread['ask'] - base_offset
+    #             self._buy_limit(bid_volume, bid_price, i)
+    #             self._sell_limit(ask_volume, ask_price, i)
+    #         self.panic = False
+    #     self.prev_cash = self.cash

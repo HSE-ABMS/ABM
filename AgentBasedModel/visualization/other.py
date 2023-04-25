@@ -2,6 +2,8 @@ from AgentBasedModel.simulator import SimulatorInfo
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from AgentBasedModel.utils import logging
+
 
 def print_book(info: SimulatorInfo, n=5):
     val = pd.concat([
@@ -14,7 +16,7 @@ def print_book(info: SimulatorInfo, n=5):
             'Quantity': [v.qty for v in info.exchange.order_book()['bid']]
         }).groupby('Buy').sum().reset_index().sort_values('Buy', ascending=False).head(n)
     ])
-    print(val[['Buy', 'Sell', 'Quantity']].fillna('').to_string(index=False))
+    logging.Logger.info(val[['Buy', 'Sell', 'Quantity']].fillna('').to_string(index=False))
 
 
 def plot_book(info: SimulatorInfo, bins=50, figsize=(6, 6)):
