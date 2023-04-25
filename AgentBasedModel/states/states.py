@@ -33,6 +33,8 @@ def test_trend_kendall(values, category: bool = False, conf: float = .95) -> boo
     """
     iterations = range(len(values))
     tau, p_value = kendalltau(iterations, values)
+    
+    
     if category:
         return p_value < (1 - conf)
     return {'tau': round(tau, 4), 'p-value': round(p_value, 4)}
@@ -125,4 +127,38 @@ def general_states(info: SimulatorInfo, size: int = 10, window: int = 5) -> str 
             res.append('trend')
         else:
             res.append('stable')
+    return res
+
+def status(info: SimulatorInfo, size: int = None, window: int = 5, shock: int = 0) -> str or list[str]:
+    volatility = info.price_volatility(window)
+    price = info.prices[window:]
+    if size is None:
+        return print("Add a size to function")
+
+    res = list()
+    s = 0
+    for i in range(len(volatility) // size):
+        if shock != 0:
+            if i == (shock+window)//size:
+                res.append("SHOCK!")
+        for n in range(size):
+            s = s + volatility[n+size*i]
+
+        s = s / size
+        if s > 0.9:
+            res.append("panic")
+        elif s < 0.6:
+            if i == 0:
+                if price[size*i] < price[size*i+size-1]: # -1 not to out of range
+                    res.append("calm-up")
+                else:
+                    res.append("calm-down")
+            if i != 0:
+                if price[size*i-1] < price[size*i+size-1]: # -1 not to out of range
+                    res.append("calm-up")
+                else:
+                    res.append("calm-down")
+        else:
+            res.append("recovery")
+
     return res
