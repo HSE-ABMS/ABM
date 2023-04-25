@@ -738,6 +738,7 @@ class AwareTrader(Trader):
         # that the agent is willing to offer at a time
         self.hesitation = hesitation
         self.delay = delay
+        self.market = markets[0]
 
     def inform(self, news):
         self.info_flow.put(self.delay, news)
@@ -749,20 +750,19 @@ class NumericalFundamentalist(AwareTrader):
         self.expectation = expectation
 
     def call(self):
-        prices = list(filter(lambda p: p is not None, map(lambda m: m.price(), self.markets)))
-        if len(prices) == 0:
+        price = self.market.price()
+        if price is None:
             return
-        price = mean(prices)
         news = self.info_flow.pull()
         if type(news) is CategoricalNews:
             return
         if type(news) is NumericalNews:
             if news.performance > self.expectation:
-                self._sell_limit(sum(self.assets) // self.hesitation, price)
+                self._sell_limit(sum(self.assets) // self.hesitation, price, market_id=0)
             else:
                 q = round(self.cash / self.hesitation / price)
                 if q > 0:
-                    self._buy_limit(q, price)
+                    self._buy_limit(q, price, market_id=0)
 
 
 class AdaptiveNumericalFundamentalist(AwareTrader):
@@ -776,6 +776,9 @@ class AdaptiveNumericalFundamentalist(AwareTrader):
         return old * (1 - coef) + new * coef
 
     def call(self):
+        price = self.market.price()
+        if price is None:
+            return
         news = self.info_flow.pull()
         if type(news) is not NumericalNews:
             return
