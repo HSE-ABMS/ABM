@@ -1,43 +1,47 @@
-from AgentBasedModel import *
+import AgentBasedModel
 import random
 
-from AgentBasedModel.events.events import LiquidityShock
+import json
 
+from AgentBasedModel import plot_price_fundamental, plot_arbitrage, plot_price, plot_dividend, plot_orders
+from AgentBasedModel.utils import logging
 
-def generateAgents(minVolume, maxVolume, exchangeCount):
-    exchangesAgents = []
-    for _ in range(exchangeCount):
-        exchangesAgents.append(Broker(volume=random.randint(minVolume, maxVolume)))
-    return exchangesAgents
-
-
-exchanges = generateAgents(300, 2000, 2)
-
+with open("config.json", "r", encoding="utf-8") as f:
+    config = json.loads(f.read())
+logging.Logger.info(f"Config: {json.dumps(config)}")
+exchanges = []
 traders = []
+events = []
 
-traders.extend(
-    [
-        Universalist([exchanges[random.randint(0, len(exchanges) - 1)]], 10 ** 3, [0]) for _ in range(500)
-    ]
-)
-traders.extend(
-    [
-        Fundamentalist([exchanges[random.randint(0, len(exchanges) - 1)]], 10 ** 3, [0]) for _ in range(100)
-    ]
-)
-traders.extend(
-    [
-        Chartist(exchanges, 10 ** 3, [0, 0]) for _ in range(10)
-    ]
-)
-
-simulator = Simulator(**{
+for exchange in config["exchanges"]:
+    exchanges.append(AgentBasedModel.ExchangeAgent(**exchange))
+for trader in config["traders"]:
+    params = dict(**trader)
+    params.pop("type")
+    params.pop("count")
+    params["markets"] = [exchanges[_] for _ in trader["markets"]]
+    traders.extend(
+        [
+            getattr(AgentBasedModel.agents, trader["type"])(**params) for _ in range(trader["count"])
+        ]
+    )
+for event in config["events"]:
+    params = dict(**event)
+    params.pop("type")
+    events.append(
+        getattr(AgentBasedModel.events, event["type"])(**params)
+    )
+simulator = AgentBasedModel.Simulator(**{
     'exchanges': exchanges,
     'traders': traders,
-    'events': [MarketPriceShock(200, -10)],
+    'events': events,
 })
-simulator.simulate(500)
+simulator.simulate(config["iterations"])
 
 info = simulator.info
 for _ in range(len(info)):
     plot_price_fundamental(info[_])
+    plot_arbitrage(info[_])
+    plot_price(info[_])
+    plot_dividend(info[_])
+    plot_orders(info[_])
