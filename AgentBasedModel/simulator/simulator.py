@@ -20,7 +20,7 @@ class Simulator:
             SimulatorInfo(
                 self.exchanges[_],
                 self.traders,
-                list(filter(lambda event: event.stock_id == _, events))
+                list(filter(lambda event: event.stock_id == _, events)) if events is not None else None
             ) for _ in range(len(self.exchanges))
         ]  # links to existing objects
 

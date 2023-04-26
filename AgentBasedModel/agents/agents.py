@@ -783,9 +783,9 @@ class AdaptiveNumericalFundamentalist(AwareTrader):
         if type(news) is not NumericalNews:
             return
         if news.performance > self.expectation:
-            self._sell_market(self.assets // self.hesitation)
+            self._sell_limit(self.assets[0] // self.hesitation, price, 0)
         else:
             q = round(self.cash / self.hesitation / self.market.price())
             if q > 0:
-                self._buy_market(q)
+                self._sell_limit(q, price, 0)
         self.expectation = AdaptiveNumericalFundamentalist.smooth(self.phi, self.expectation, news.performance)
