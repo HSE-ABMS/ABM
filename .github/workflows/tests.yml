@@ -5,9 +5,9 @@ name: Tests
 
 on:
   push:
-    branches: ["ci"]
-  # pull_request:
-  #   branches: "*"
+    branches: "*"
+  pull_request:
+    branches: ["main", "merging"]
 
 jobs:
   build:
