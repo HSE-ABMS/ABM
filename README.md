@@ -1,3 +1,5 @@
+[![Tests](https://github.com/HSE-ABMS/ABM/actions/workflows/tests.yml/badge.svg)](https://github.com/HSE-ABMS/ABM/actions/workflows/tests.yml)
+
 # ABM
 Agent-Based Model that simulates trading on a financial market.
 
