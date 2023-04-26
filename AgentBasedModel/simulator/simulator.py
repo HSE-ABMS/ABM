@@ -1,9 +1,10 @@
 from typing import List
 
-from AgentBasedModel.agents import Broker, Universalist, Chartist, Fundamentalist
+from AgentBasedModel.agents import Broker, Universalist, Chartist, Fundamentalist, AwareTrader
 from AgentBasedModel.utils.math import mean, std, difference, rolling
 import random
 from tqdm import tqdm
+from AgentBasedModel.news import InfoFlow
 
 
 class Simulator:
@@ -19,7 +20,7 @@ class Simulator:
             SimulatorInfo(
                 self.exchanges[_],
                 self.traders,
-                list(filter(lambda event: event.stock_id == _, events))
+                list(filter(lambda event: event.stock_id == _, events)) if events is not None else None
             ) for _ in range(len(self.exchanges))
         ]  # links to existing objects
 
@@ -33,7 +34,7 @@ class Simulator:
                 # Interest payment
                 trader.cash += trader.cash * self.exchanges[_].risk_free  # allow risk-free loan
 
-    def simulate(self, n_iter: int, silent=False) -> object:
+    def simulate(self, n_iter: int, news: InfoFlow = None, silent=True) -> object:
         for it in tqdm(range(n_iter), desc='Simulation', disable=silent):
             # Call scenario
             if self.events:
@@ -53,6 +54,14 @@ class Simulator:
             random.shuffle(self.traders)
             for trader in self.traders:
                 trader.call()
+
+            # Inform Traders
+            if news is not None:
+                n = news.pull()
+                if n is not None:
+                    for trader in self.traders:
+                        if isinstance(trader, AwareTrader):
+                            trader.inform(n)
 
             # Payments and dividends
             self._payments()  # pay dividends
