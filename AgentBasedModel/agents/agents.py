@@ -265,12 +265,12 @@ class Trader:
         return self.cash + price
 
     def _buy_limit(self, quantity, price, market_id):
-        order = Order(round(price, 1), round(quantity), 'bid', market_id, self.markets[market_id].iteration, self)
+        order = Order(round(price, 1), round(quantity), 'bid', market_id, self.markets[market_id].iteration(), self)
         self.orders.append(order)
         self.markets[market_id].limit_order(order)
 
     def _sell_limit(self, quantity, price, market_id):
-        order = Order(round(price, 1), round(quantity), 'ask', market_id, self.markets[market_id].iteration, self)
+        order = Order(round(price, 1), round(quantity), 'ask', market_id, self.markets[market_id].iteration(), self)
         self.orders.append(order)
         self.markets[market_id].limit_order(order)
 
@@ -289,7 +289,7 @@ class Trader:
                 mn_index = _
         logging.Logger.info(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index,
-                      self.markets[mn_index].iteration, self)
+                      self.markets[mn_index].iteration(), self)
         return self.markets[mn_index].market_order(order).qty
 
     def _sell_market(self, quantity) -> int:
@@ -307,7 +307,7 @@ class Trader:
                 mn_index = _
         logging.Logger.info(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index,
-                      self.markets[mn_index].iteration, self)
+                      self.markets[mn_index].iteration(), self)
         return self.markets[mn_index].market_order(order).qty
 
     def _cancel_order(self, order: Order):
