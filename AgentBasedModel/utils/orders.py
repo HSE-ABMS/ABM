@@ -10,8 +10,9 @@ class Order:
     """
     order_id = 0
 
-    def __init__(self, price, qty, order_type, market_id, trader_link=None):
+    def __init__(self, price, qty, order_type, market_id, iteration, trader_link=None):
         # Properties
+        self.iteration = iteration
         self.price = price
         self.qty = qty
         self.order_type = order_type
@@ -270,7 +271,7 @@ class OrderList:
     @classmethod
     def from_list(cls, order_list, sort=False):
         order_list = [Order(order['price'], order['qty'], order['order_type'],
-                            order['market_id'], order.get('trader_link')) for order in order_list]
+                            order['market_id'], order['iteration'], order.get('trader_link')) for order in order_list]
         order_list_obj = OrderList(order_list[0].order_type)
         if sort:
             for order in order_list:

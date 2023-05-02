@@ -1,10 +1,13 @@
-from typing import List
+from typing import List, Dict
 
 from AgentBasedModel.utils import Order, OrderList, logging
 from AgentBasedModel.utils.math import exp, mean
 from AgentBasedModel.news import InfoFlow
 import random
 from abc import abstractmethod
+from queue import Queue
+from AgentBasedModel.news.news import News, CategoricalNews, NumericalNews
+from math import log
 
 
 class Broker:
@@ -74,9 +77,21 @@ class Broker:
     def cancel_order(self, order: Order):
         self._not_impl()
 
-    def order_book(self):
+    def order_book(self) -> Dict[str, OrderList]:
         self._not_impl()
-        
+
+    def risk_free(self) -> float:
+        self._not_impl()
+
+    def iteration(self) -> int:
+        self._not_impl()
+
+    def increment_iteration(self):
+        self._not_impl()
+
+    def transaction_cost(self) -> float:
+        self._not_impl()
+
 
 class ExchangeAgent(Broker):
     id = 0
@@ -84,13 +99,14 @@ class ExchangeAgent(Broker):
     def __init__(self, price: float or int = 100, std: float or int = 25, volume: int = 1000, rf: float = 5e-4,
                  transaction_cost: float = 0):
         self.id = ExchangeAgent.id
+        self._iteration = 0
         self.name = f'ExchangeAgent{self.id}'
         ExchangeAgent.id += 1
         self.volume = volume
         self._order_book = {'bid': OrderList('bid'), 'ask': OrderList('ask')}
         self.dividend_book = list()  # act like queue
-        self.risk_free = rf
-        self.transaction_cost = transaction_cost
+        self._risk_free = rf
+        self._transaction_cost = transaction_cost
         self._fill_book(price, std, volume, rf * price)  # initialise both order book and dividend book
         logging.Logger.info(f"{self.name}")
 
@@ -145,7 +161,7 @@ class ExchangeAgent(Broker):
             return {'bid': self._order_book['bid'].first.qty, 'ask': self._order_book['ask'].first.qty}
         raise Exception(f'There no either bid or ask orders')
 
-    def price(self) -> float:
+    def price(self) -> float or None:
         spread = self.spread()
         if spread:
             return round((spread['bid'] + spread['ask']) / 2, 1)
@@ -163,7 +179,7 @@ class ExchangeAgent(Broker):
 
     def limit_order(self, order: Order):
         bid, ask = self.spread().values()
-        t_cost = self.transaction_cost
+        t_cost = self.transaction_cost()
         if not bid or not ask:
             return
 
@@ -181,7 +197,7 @@ class ExchangeAgent(Broker):
                 self._order_book['ask'].insert(order)
 
     def market_order(self, order: Order) -> Order:
-        t_cost = self.transaction_cost
+        t_cost = self.transaction_cost()
         if order.order_type == 'bid':
             order = self._order_book['ask'].fulfill(order, t_cost)
         elif order.order_type == 'ask':
@@ -196,6 +212,18 @@ class ExchangeAgent(Broker):
 
     def order_book(self):
         return self._order_book
+
+    def risk_free(self):
+        return self._risk_free
+
+    def iteration(self):
+        return self._iteration
+
+    def increment_iteration(self):
+        self._iteration += 1
+
+    def transaction_cost(self):
+        return self._transaction_cost
 
 
 class Trader:
@@ -237,12 +265,12 @@ class Trader:
         return self.cash + price
 
     def _buy_limit(self, quantity, price, market_id):
-        order = Order(round(price, 1), round(quantity), 'bid', market_id, self)
+        order = Order(round(price, 1), round(quantity), 'bid', market_id, self.markets[market_id].iteration(), self)
         self.orders.append(order)
         self.markets[market_id].limit_order(order)
 
     def _sell_limit(self, quantity, price, market_id):
-        order = Order(round(price, 1), round(quantity), 'ask', market_id, self)
+        order = Order(round(price, 1), round(quantity), 'ask', market_id, self.markets[market_id].iteration(), self)
         self.orders.append(order)
         self.markets[market_id].limit_order(order)
 
@@ -260,7 +288,8 @@ class Trader:
             if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book()['ask'].last.price:
                 mn_index = _
         logging.Logger.info(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
-        order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index, self)
+        order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index,
+                      self.markets[mn_index].iteration(), self)
         return self.markets[mn_index].market_order(order).qty
 
     def _sell_market(self, quantity) -> int:
@@ -277,7 +306,8 @@ class Trader:
             if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book()['bid'].last.price:
                 mn_index = _
         logging.Logger.info(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
-        order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index, self)
+        order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index,
+                      self.markets[mn_index].iteration(), self)
         return self.markets[mn_index].market_order(order).qty
 
     def _cancel_order(self, order: Order):
@@ -287,6 +317,7 @@ class Trader:
     @abstractmethod
     def refresh(self, info):
         pass
+
 
 class Random(Trader):
     """
@@ -419,11 +450,11 @@ class Fundamentalist(Trader):
         return min(q, 5)
 
     def call(self):
-        pf = round(self.evaluate(self.markets[0].dividend(self.access), self.markets[0].risk_free),
+        pf = round(self.evaluate(self.markets[0].dividend(self.access), self.markets[0].risk_free()),
                    1)  # fundamental price
         p = self.markets[0].price()
         spread = self.markets[0].spread()
-        t_cost = self.markets[0].transaction_cost
+        t_cost = self.markets[0].transaction_cost()
 
         if spread is None:
             return
@@ -490,7 +521,7 @@ class Chartist(Trader):
             for _ in range(len(self.markets)):
                 if self.markets[_].price() < self.markets[mn_index].price():
                     mn_index = _
-            t_cost = self.markets[mn_index].transaction_cost
+            t_cost = self.markets[mn_index].transaction_cost()
             spread = self.markets[mn_index].spread()
             # Market order
             if random_state > .85:
@@ -507,7 +538,7 @@ class Chartist(Trader):
             for _ in range(len(self.markets)):
                 if self.markets[_].price() < self.markets[mx_index].price():
                     mx_index = _
-            t_cost = self.markets[mx_index].transaction_cost
+            t_cost = self.markets[mx_index].transaction_cost()
             spread = self.markets[mx_index].spread()
             # Market order
             if random_state > .85:
@@ -600,8 +631,8 @@ class Universalist(Fundamentalist, Chartist):
 
         dp = info.prices[-1] - info.prices[-2] if len(info.prices) > 1 else 0  # price derivative
         p = self.markets[0].price()  # market price
-        pf = self.evaluate(self.markets[0].dividend(self.access), self.markets[0].risk_free)  # fundamental price
-        r = pf * self.markets[0].risk_free  # expected dividend return
+        pf = self.evaluate(self.markets[0].dividend(self.access), self.markets[0].risk_free())  # fundamental price
+        r = pf * self.markets[0].risk_free()  # expected dividend return
         R = mean(info.returns[-1].values())  # average return in economy
 
         # Change sentiment
@@ -635,6 +666,7 @@ class Universalist(Fundamentalist, Chartist):
 
     def refresh(self, info):
         self.change_strategy(info)
+
 
 class MarketMaker(Trader):
     """
@@ -727,8 +759,6 @@ class MarketMaker(Trader):
     #         self.panic = False
     #     self.prev_cash = self.cash
 
-from queue import Queue
-from AgentBasedModel.news.news import News, CategoricalNews, NumericalNews
 
 class AwareTrader(Trader):
     def __init__(self, hesitation: float, delay: int, markets: List[Broker], cash: float or int, assets: List[int]):
@@ -766,7 +796,8 @@ class NumericalFundamentalist(AwareTrader):
 
 
 class AdaptiveNumericalFundamentalist(AwareTrader):
-    def __init__(self, phi: float, expectation: float, delay: int, markets: List[Broker], cash: float or int, assets: List[int]):
+    def __init__(self, phi: float, expectation: float, delay: int, markets: List[Broker], cash: float or int,
+                 assets: List[int]):
         super().__init__(6.0, delay, markets, cash, assets)
         self.expectation = expectation
         self.phi = phi
@@ -789,3 +820,319 @@ class AdaptiveNumericalFundamentalist(AwareTrader):
             if q > 0:
                 self._sell_limit(q, price, 0)
         self.expectation = AdaptiveNumericalFundamentalist.smooth(self.phi, self.expectation, news.performance)
+
+
+class LossAverseTrader(Fundamentalist, Chartist):
+    # https://www.hindawi.com/journals/ads/2015/971269/
+    """
+    Universalist mixes Fundamentalist, Chartist trading strategies allowing to change one strategy to another
+    """
+
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int], access: int = 1,
+                 loss_aversion_parameter: float = 2.25, b: float = 0.04, c: float = 0.04, m: float = 0.975,
+                 beta_std: float = 0.05, gamma_std: float = 0.01, r: float = 300):
+        """
+        :param markets: exchange agent links
+        :param cash: number of cash
+        :param assets: number of assets
+        :param access: number of future dividends informed
+        """
+        super().__init__(markets, cash, assets)
+        self.type = 'Chartist' if random.random() > .5 else 'Fundamentalist'  # randomly decide type
+        self.sentiment = 'Optimistic' if random.random() > .5 else 'Pessimistic'  # sentiment about trend (Chartist)
+        self.access = access  # next n dividend payments known (Fundamentalist)
+        self.loss_aversion_parameter = loss_aversion_parameter
+        self.b = b  # Extrapolating parameter
+        self.c = c  # Reverting parameter
+        self.m = m  # Memory parameter
+        self.r = r  # Intensity of choice parameter
+        self.beta_std = beta_std  # Standard deviation of the additional random orders of technical trading
+        self.gamma_std = gamma_std  # Standard deviation of the additional random orders of fundamental trading
+
+        self.fundamental_orders = []
+        self.chartist_orders = []
+        self.prev_fundamental_attractiveness = 0
+        self.prev_chartist_attractiveness = 0
+        self.prev_price = 0
+
+    def call(self):
+        """
+        Call one of parents' methods depending on what type it is currently set.
+        """
+        if self.type == 'Chartist':
+            Chartist.call(self)
+        elif self.type == 'Fundamentalist':
+            Fundamentalist.call(self)
+        else:
+            return
+
+    def change_strategy(self, info):
+        """
+        Change strategy or sentiment
+
+        """
+        # Gather variables
+        if self.markets[0].iteration() < 2:
+            self.prev_price = self.markets[0].price()
+            return
+
+        beta, gamma = random.normalvariate(mu=0, sigma=self.beta_std), random.normalvariate(mu=0, sigma=self.gamma_std)
+
+        p = self.markets[0].price()  # market price
+        pf = self.evaluate(self.markets[0].dividend(self.access), self.markets[0].risk_free())  # fundamental price
+
+        new_fundamental_order = self.b * (p - self.prev_price) + beta
+        new_chartist_order = self.c * (pf - p) + gamma
+
+        chartist_attractiveness = (exp(p) - exp(self.prev_price)) * self.chartist_orders[0] + \
+                                  self.m * self.prev_chartist_attractiveness
+        fundamental_attractiveness = (exp(p) - exp(self.prev_price)) * self.fundamental_orders[0] + \
+                                     self.m * self.prev_fundamental_attractiveness
+
+        vc = chartist_attractiveness * self.r
+        vf = fundamental_attractiveness * self.r
+
+        if self.type == 'Chartist' and vc < 0:
+            vc *= self.loss_aversion_parameter
+        elif self.type == 'Fundamentalist' and vf < 0:
+            vf *= self.loss_aversion_parameter
+
+        denominator = exp(vc) + exp(vf) + 1
+
+        wc = exp(vc) / denominator
+        wf = exp(vf) / denominator
+        w0 = 1 / denominator
+
+        if wc > wf and wc > w0:
+            self.type = 'Chartist'
+            Chartist.change_sentiment(self, info)
+        elif wf > wc and wf > w0:
+            self.type = 'Fundamentalist'
+        else:
+            self.type = 'Pass'
+
+        self.prev_fundamental_attractiveness = fundamental_attractiveness
+        self.prev_chartist_attractiveness = chartist_attractiveness
+        self.prev_price = self.markets[0].price()
+        self.fundamental_orders = [self.fundamental_orders[1], new_fundamental_order]
+        self.chartist_orders = [self.chartist_orders[1], new_chartist_order]
+
+
+class LiquidityConsumer(Trader):
+    # https://eprints.soton.ac.uk/423233/2/McGroarty2018_Article_HighFrequencyTradingStrategies.pdf
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int],
+                 min_volume: float = 1000, max_volume: float = 100000, acting_prob: float = 0.1):
+        super().__init__(markets, cash, assets)
+        self.type = 'Liquidity Consumer'
+        self.order_volume = random.uniform(min_volume, max_volume)
+        self.acting_prob = acting_prob
+        if self.acting_prob is None:
+            self.acting_prob = random.uniform(0.05, 0.95)
+
+    def call(self):
+        random_state = random.random()
+        if random_state < self.acting_prob:
+            random_state = random.random()
+            if random_state > 0.5:  # buy
+                best_volume = min(self.markets[0].spread_volume()['bid'], self.order_volume)
+                self._buy_market(best_volume)
+            else:  # sell
+                best_volume = min(self.markets[0].spread_volume()['ask'], self.order_volume)
+                self._sell_market(best_volume)
+            self.order_volume -= best_volume
+
+
+class MomentumTrader(Trader):
+    # https://eprints.soton.ac.uk/423233/2/McGroarty2018_Article_HighFrequencyTradingStrategies.pdf
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int], lag: int = 5,
+                 entry_threshold: float = 0.001, order_limit: float = 1000, acting_prob: float = 0.4):
+        super().__init__(markets, cash, assets)
+        self.type = 'Momentum Trader'
+        self.roc = 0
+        self.lag = lag
+        self.lag_price = Queue()
+        for i in range(lag):
+            self.lag_price.put(100.)
+        self.entry_threshold = entry_threshold
+        self.order_limit = order_limit
+        self.acting_prob = acting_prob
+
+    def call(self):
+        random_state = random.random()
+        lag_price = self.lag_price.get()
+        if random_state < self.acting_prob:
+            self.roc = (self.markets[0].price() - lag_price) / lag_price
+            spread_volume = self.markets[0].spread_volume()
+            if self.roc >= self.entry_threshold:
+                print(spread_volume['bid'])
+                self._buy_market(spread_volume['bid'] * abs(self.roc))
+            elif self.roc <= -self.entry_threshold:
+                print(spread_volume['ask'])
+                self._sell_market(spread_volume['ask'] * abs(self.roc))
+        self.lag_price.put(self.markets[0].price())
+
+
+class MeanReversionTrader(Trader):
+    # https://eprints.soton.ac.uk/423233/2/McGroarty2018_Article_HighFrequencyTradingStrategies.pdf
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int], k: int = 3, sigma: float = 0.02,
+                 discount_factor: float = 0.94, order_volume: float = 1, acting_prob: float = 0.4,
+                 tick_size: float = 0.01):
+        super().__init__(markets, cash, assets)
+        self.type = 'Mean Reversion Trader'
+        self.ema = self.markets[0].price()
+        self.discount_factor = discount_factor
+        self.order_volume = order_volume
+        self.k = k
+        self.sigma = sigma
+        self.acting_prob = acting_prob
+        self.tick_size = tick_size
+
+    def call(self):
+        p = self.markets[0].price()
+        self.ema += self.discount_factor * (p - self.ema)
+        if random.random() < self.acting_prob:
+            spread = self.markets[0].spread()
+            if p - self.ema >= self.k * self.sigma:
+                self._sell_limit(self.order_volume, spread['ask'] - self.tick_size, 0)
+            elif self.ema - p >= self.k * self.sigma:
+                self._buy_limit(self.order_volume, spread['bid'] + self.tick_size, 0)
+
+
+class AnchoringTrader(Trader):
+    """
+    Fundamentalist evaluate stock value using Constant Dividend Model. Then places orders accordingly
+    """
+
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int], k: float = 0.5):
+        """
+        :param markets: exchange agent link
+        :param cash: number of cash
+        :param assets: number of assets
+        """
+        super().__init__(markets, cash, assets)
+        self.type = 'Anchoring Trader'
+        self.k = k
+
+    def count_current_equity(self):
+        pass
+
+    @staticmethod
+    def evaluate(price: float, dividends: float, k: float):
+        random_state = random.random()
+        anchoring_reaction = (1 - k) + 0.2 * sum([(price + dividends - 2) / (price - 1 - i) - 1 for i in range(1, 6)]) \
+                             + 0.2 * k * sum([(price - 5) / (price - 5 - i) - 1 for i in range(1, 6)])
+        if random_state > .45:
+            return price * (1 + anchoring_reaction), dividends * (1 + anchoring_reaction)
+        else:
+            return price * (1 - anchoring_reaction), dividends * (1 - anchoring_reaction)
+
+    def call(self):
+        spread = self.markets[0].spread()
+        t_cost = self.markets[0].transaction_cost()
+
+        if spread is None:
+            return
+
+        random_state = random.random()
+
+        # Limit or Market order
+        expected_price, expected_dividends = self.evaluate(self.markets[0].price(), self.markets[0].dividend(), self.k)
+
+        if expected_price > self.markets[0].price():
+            ask_t = round(spread['ask'] * (1 + t_cost), 1)
+            if expected_price >= ask_t:
+                self._buy_market(Random.draw_quantity())
+            else:
+                if self.orders:
+                    self._cancel_order(self.orders[-1])
+
+        elif expected_price < self.markets[0].price():
+            bid_t = round(spread['bid'] * (1 - t_cost), 1)
+            if expected_price <= bid_t:
+                self._sell_market(Random.draw_quantity())
+            else:
+                if self.orders:
+                    self._cancel_order(self.orders[-1])
+
+        else:
+            if self.orders:
+                self._cancel_order(self.orders[-1])
+
+
+class LFT(Trader):
+    #  https://informs-sim.org/wsc15papers/027.pdf
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int],
+                 max_memory_length: int = 30, order_life: int = 10, evolution_circle: int = 30, evolution_rate=0.3,
+                 std1: float = 0.3, std2: float = 0.6, std3: float = 0.1):
+        """
+        :param markets: exchange agent link
+        :param cash: number of cash
+        :param assets: number of assets
+        """
+        super().__init__(markets, cash, assets)
+        self.type = 'LFT'
+        self.activation_probability = random.uniform(0.01, 0.1)
+        self.max_memory_length = max_memory_length
+        self.memory_length = random.randint(1, max_memory_length)
+        self.order_life = order_life
+        self.evolution_circle = evolution_circle
+        self.evolution_rate = evolution_rate
+        self.prev_price = [1.]
+        self.n1 = random.normalvariate(0, std1)
+        self.n2 = random.normalvariate(0, std2)
+        self.n3 = random.normalvariate(0, std3)
+        self.std1 = std1
+        self.std2 = std2
+        self.std3 = std3
+        self.size_fluctuation = random.uniform(200, 1000)
+        self.price_fluctuation = random.uniform(-0.002, 0.01)
+        self.prev_equity = self.equity()
+
+    def call(self):
+        for order in self.orders.copy():
+            if self.markets[0].iteration() - order.iteration >= self.order_life:
+                self._cancel_order(order)
+
+        p = self.markets[0].price()
+        if self.markets[0].iteration() > 0 and self.markets[0].iteration() % self.evolution_circle == 0:
+            if self.equity() > self.prev_equity:
+                self.activation_probability = random.uniform(self.activation_probability, 0.1)
+                self.size_fluctuation = random.uniform(self.size_fluctuation, 1000)
+            else:
+                if random.uniform(0, 1) < self.evolution_rate:
+                    self.n1 = random.normalvariate(0, self.std1)
+                    self.n2 = random.normalvariate(0, self.std2)
+                    self.n3 = random.normalvariate(0, self.std3)
+                    self.memory_length = random.randint(1, self.max_memory_length)
+            self.prev_equity = self.equity()
+
+        if log(p / self.prev_price[-1]) > self.activation_probability:
+            self.prev_price.append(p)
+            if len(self.prev_price) > self.memory_length:
+                self.prev_price = self.prev_price[(len(self.prev_price) - self.memory_length):]
+            return
+        if self.markets[0].iteration == 0:
+            self.prev_price = [100.]
+        pf = Fundamentalist.evaluate(self.markets[0].dividend(1), self.markets[0].risk_free())
+
+        expected_return = self.n1 * log(pf / p) + self.n3 * random.normalvariate(0, 1)
+        if len(self.prev_price) > 1:
+            expected_return += self.n2 * sum([self.prev_price[-1] / self.prev_price[-i]
+                                              for i in range(2, len(self.prev_price) + 1)]) / len(self.prev_price)
+        expected_price = p * exp(expected_return)
+        ask_price = self.prev_price[-1] * (1 - self.price_fluctuation)
+        bid_price = self.prev_price[-1] * (1 + self.price_fluctuation)
+
+        order_volume = abs(expected_return * self.size_fluctuation)
+
+        spread = self.markets[0].spread()
+
+        if ask_price > expected_price:
+            self._sell_limit(order_volume, min(ask_price, spread['ask']), 0)  # ASK
+
+        if bid_price < expected_price:
+            self._buy_limit(order_volume, max(bid_price, spread['bid']), 0)  # BID
+
+        self.prev_price.append(p)
+        if len(self.prev_price) > self.memory_length:
+            self.prev_price = self.prev_price[(len(self.prev_price) - self.memory_length):]

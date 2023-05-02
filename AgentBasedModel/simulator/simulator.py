@@ -32,9 +32,9 @@ class Simulator:
                         # Dividend payments
                         trader.cash += trader.assets[__] * self.exchanges[_].dividend()  # allow negative dividends
                 # Interest payment
-                trader.cash += trader.cash * self.exchanges[_].risk_free  # allow risk-free loan
+                trader.cash += trader.cash * self.exchanges[_].risk_free()  # allow risk-free loan
 
-    def simulate(self, n_iter: int, news: InfoFlow = None, silent=True) -> object:
+    def simulate(self, n_iter: int, news: InfoFlow = None, silent=True, shuffle=True) -> object:
         for it in tqdm(range(n_iter), desc='Simulation', disable=silent):
             # Call scenario
             if self.events:
@@ -51,7 +51,8 @@ class Simulator:
                     trader.refresh(info)
 
             # Call Traders
-            random.shuffle(self.traders)
+            if shuffle:
+                random.shuffle(self.traders)
             for trader in self.traders:
                 trader.call()
 
@@ -67,6 +68,7 @@ class Simulator:
             self._payments()  # pay dividends
             for _ in range(len(self.exchanges)):  # generate next dividends
                 self.exchanges[_].generate_dividend()
+                self.exchanges[_].increment_iteration()
 
         return self
 
