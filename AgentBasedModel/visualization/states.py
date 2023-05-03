@@ -130,19 +130,19 @@ def plot_trends(info: SimulatorInfo, rolling: int = 1, figsize=(14, 7), window: 
         plt.plot(range(i, i + window + 1), rolling_price[i:window+i + 1], color=color)
     plt.show()
 
-def plot_panic(info: SimulatorInfo, rolling: int = 1, figsize=(14, 7), window: int = 5):
-    plt.figure(figsize=figsize)
-    plt.title('Panic')
-    plt.xlabel('Iterations')
-    plt.ylabel('Price')
+# def plot_panic(info: SimulatorInfo, rolling: int = 1, figsize=(14, 7), window: int = 5):
+#     plt.figure(figsize=figsize)
+#     plt.title('Panic')
+#     plt.xlabel('Iterations')
+#     plt.ylabel('Price')
 
-    rolling_price = np.array(math.rolling(info.prices, rolling))
-    plt.plot(range(rolling - 1, len(rolling_price)), rolling_price, color='black')
+#     rolling_price = np.array(math.rolling(info.prices, rolling))
+#     plt.plot(range(rolling - 1, len(rolling_price)), rolling_price, color='black')
 
-    panic_std_indexes = states_pattern.panic_std_volatility(np.array(info.price_volatility(window)))
-    panic_ols_indexes = states_pattern.panic_ols_test(np.array(info.price_volatility(window)))
-    panic_spreads = states_pattern.panic_spread(np.array(info.spreads))
-    plt.plot(panic_std_indexes, rolling_price[panic_std_indexes], '.', color='r')
-    plt.plot(panic_ols_indexes, rolling_price[panic_ols_indexes], '.', color='g')
-    plt.plot(panic_spreads, rolling_price[panic_spreads], '.', color='y')
-    plt.show()
+#     panic_std_indexes = states_pattern.panic_std_volatility(np.array(info.price_volatility(window)))
+#     panic_ols_indexes = states_pattern.panic_ols_test(np.array(info.price_volatility(window)))
+#     panic_spreads = states_pattern.panic_spread(np.array(info.spreads))
+#     plt.plot(panic_std_indexes, rolling_price[panic_std_indexes], '.', color='r')
+#     plt.plot(panic_ols_indexes, rolling_price[panic_ols_indexes], '.', color='g')
+#     plt.plot(panic_spreads, rolling_price[panic_spreads], '.', color='y')
+#     plt.show()

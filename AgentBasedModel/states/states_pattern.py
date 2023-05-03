@@ -43,28 +43,28 @@ def linreg_trends(X: np.array, y: np.array) -> int:
     regr.fit(X, y)
     return regr.coef_[0][0]
 
-def panic_std_volatility(volatilities: np.array, window: int = 5, tol: float = 5) -> list:
-    vol_result = []
-    for i in range(window, len(volatilities) - window, window):
-        if max(volatilities[i-window:i+window]) >= tol * math.mean(volatilities):
-            vol_result.append(i)
-    return vol_result
+# def panic_std_volatility(volatilities: np.array, window: int = 5, tol: float = 5) -> list:
+#     vol_result = []
+#     for i in range(window, len(volatilities) - window, window):
+#         if max(volatilities[i-window:i+window]) >= tol * math.mean(volatilities):
+#             vol_result.append(i)
+#     return vol_result
 
-def panic_ols_test(vols: np.array, window: int = 5, tol: float = 0.2, conf = 0.95) -> list:
-    size = window * 2
-    vol_result = []
-    for i in range(size, len(vols) - size, size):
-        test = test_trend_ols(vols[i-size:i+size])
-        if test['value'] > tol and test['p-value'] < (1 - conf):
-            vol_result.append(i)
-    return vol_result
+# def panic_ols_test(vols: np.array, window: int = 5, tol: float = 0.2, conf = 0.95) -> list:
+#     size = window * 2
+#     vol_result = []
+#     for i in range(size, len(vols) - size, size):
+#         test = test_trend_ols(vols[i-size:i+size])
+#         if test['value'] > tol and test['p-value'] < (1 - conf):
+#             vol_result.append(i)
+#     return vol_result
 
-def panic_extremum(volatilities: np.array, window: int = 15) -> list:
-    result = []
-    for i in range(window, len(volatilities)-window, window):
-        if volatilities[i] * 1.5 <= max(volatilities[0:i+window]):
-            result.append(i)
-    return result
+# def panic_extremum(volatilities: np.array, window: int = 15) -> list:
+#     result = []
+#     for i in range(window, len(volatilities)-window, window):
+#         if volatilities[i] * 1.5 <= max(volatilities[0:i+window]):
+#             result.append(i)
+#     return result
 
 # def panic_order_book(quantities: np.array, window: int = 15, tol = 0.2) -> list:
 #     result = []
@@ -79,16 +79,16 @@ def panic_extremum(volatilities: np.array, window: int = 15) -> list:
 #             result.append(i)
 #     return result
 
-def panic_spread(spreads: np.array, window: int = 15) -> list:
-    result = []
-    mean_spread = 0
-    for i in range(len(spreads)):
-        mean_spread += spreads[i]['ask'] - spreads[i]['bid']
-    mean_spread /= len(spreads)
-    for i in range(window, len(spreads)-window, window):
-        max_spread = 0
-        for i in range(i-window, i+window):
-            max_spread = max(max_spread, spreads[i]['ask'] - spreads[i]['bid'])
-        if (spreads[i]['ask'] - spreads[i]['bid']) >= mean_spread:
-            result.append(i)
-    return result
+# def panic_spread(spreads: np.array, window: int = 15) -> list:
+#     result = []
+#     mean_spread = 0
+#     for i in range(len(spreads)):
+#         mean_spread += spreads[i]['ask'] - spreads[i]['bid']
+#     mean_spread /= len(spreads)
+#     for i in range(window, len(spreads)-window, window):
+#         max_spread = 0
+#         for i in range(i-window, i+window):
+#             max_spread = max(max_spread, spreads[i]['ask'] - spreads[i]['bid'])
+#         if (spreads[i]['ask'] - spreads[i]['bid']) >= mean_spread:
+#             result.append(i)
+#     return result
