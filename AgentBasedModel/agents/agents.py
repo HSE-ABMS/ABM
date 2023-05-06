@@ -157,6 +157,7 @@ class ExchangeAgent(Broker):
         self._order_book['bid'] = OrderList.from_list([order for order in self._order_book['bid'] if order.qty > 0])
         self._order_book['ask'] = OrderList.from_list([order for order in self._order_book['ask'] if order.qty > 0])
 
+
     def spread(self) -> dict or None:
         if self._order_book['bid'] and self._order_book['ask']:
             return {'bid': self._order_book['bid'].first.price, 'ask': self._order_book['ask'].first.price}
