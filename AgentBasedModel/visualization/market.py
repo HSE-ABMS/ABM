@@ -1,6 +1,7 @@
 from AgentBasedModel.simulator import SimulatorInfo
 import AgentBasedModel.utils.math as math
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def plot_price(info: SimulatorInfo, spread=False, rolling: int = 1, figsize=(6, 6)):
@@ -80,6 +81,7 @@ def plot_orders(info: SimulatorInfo, stat: str = 'quantity', rolling: int = 1, f
     v2 = [v[stat]['ask'] for v in info.orders]
     plt.plot(range(rolling, len(v1) + 1), math.rolling(v1, rolling), label='bid', color='green')
     plt.plot(range(rolling, len(v2) + 1), math.rolling(v2, rolling), label='ask', color='red')
+
     plt.legend()
     plt.show()
 
@@ -89,8 +91,13 @@ def plot_volatility_price(info: SimulatorInfo, window: int = 5, figsize=(6, 6)):
     plt.title(f'Stock {info.exchange.id()} Price Volatility (window {window})')
     plt.xlabel('Iterations')
     plt.ylabel('Price Volatility')
-    volatility = info.price_volatility(window)
+    volatility = np.array(info.price_volatility(window)) * 10
     plt.plot(range(window, len(volatility) + window), volatility, color='black')
+    print(math.mean(volatility))
+    plt.plot(range(window, len(volatility) + window), [math.mean(volatility)] * len(volatility), color='red')
+    plt.plot(range(window, len(volatility) + window), [math.mean(volatility) * 1.5] * len(volatility), color='red')
+    plt.plot(range(window, len(volatility) + window), [math.mean(volatility) * 2.5] * len(volatility), color='red')
+    plt.plot(range(window, len(volatility) + window), [math.mean(volatility) * 4] * len(volatility), color='red')
     plt.show()
 
 

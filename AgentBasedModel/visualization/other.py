@@ -4,7 +4,6 @@ import pandas as pd
 
 from AgentBasedModel.utils import logging
 
-
 def print_book(info: SimulatorInfo, n=5):
     val = pd.concat([
         pd.DataFrame({

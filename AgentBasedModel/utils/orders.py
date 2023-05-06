@@ -1,6 +1,5 @@
 from AgentBasedModel.utils import logging
 
-
 class Order:
     """
     Order contains all relevant information about order, it can be of two types: bid, ask. Supports binary comparison
@@ -133,6 +132,17 @@ class OrderList:
 
     def to_list(self) -> list:
         return [order.to_dict() for order in self]
+
+    def book(self, order_type : str, size: int) -> dict:
+        book = {}
+
+        for order in self:
+            price = int(order.price * 10)
+            book[price] = book.get(price, 0) + order.qty
+
+        if order_type == 'bid':
+            return sorted(list(book.items()), key=lambda x: x[0])[-size:]
+        return sorted(list(book.items()), key=lambda x: x[0])[:size]
 
     def remove(self, order: Order):
         if order.order_type != self.order_type:

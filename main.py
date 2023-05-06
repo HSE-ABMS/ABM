@@ -1,24 +1,31 @@
-from AgentBasedModel import *
-from AgentBasedModel.visualization import states, other
+import imp
+import AgentBasedModel
+imp.reload(AgentBasedModel)
 
-exchange = ExchangeAgent(volume=1000)
-simulator = Simulator(**{
+from AgentBasedModel.visualization import states, states_other, market
+from AgentBasedModel.states import states_pattern
+
+exchange = AgentBasedModel.ExchangeAgent(volume=1000)
+simulator = AgentBasedModel.Simulator(**{
     'exchange': exchange,
-    'traders': [Universalist(exchange, 10**3) for _ in range(20)],
-    'events': [MarketPriceShock(200, -10)]
+    'traders': [AgentBasedModel.Universalist(exchange, 10**3) for _ in range(20)],
+    'events': [AgentBasedModel.MarketPriceShock(200, -10), AgentBasedModel.MarketPriceShock(500, +10)]
 })
 info = simulator.info
-simulator.simulate(500)
+simulator.simulate(1000)
 
-print(info.exchange.order_history)
-
-# plot_price_fundamental(info)
-# plot_price(info)
-# plot_arbitrage(info) не работает
-# plot_dividend(info) не работает
-# plot_orders(info) не работает
-# plot_volatility_price(info)
-# plot_volatility_return(info)
-# plot_liquidity(info)
-# other.plot_book(info)
-# states.plot_exp_moving_average(info)
+# states.plot_bear_trend_all_indicators(info)
+# states.plot_trends_local_extremums(info)
+# states_other.plot_moving_average(info)
+# states_other.plot_exp_moving_average(info)
+# states_other.plot_adx(info)
+# states_other.plot_standart_moving_average(info)
+# states.plot_trends_linreg(info)
+states.plot_trends(info)
+# states.plot_panic(info)
+# states_other.plot_adfuller(info)
+# states.plot_trends_local_extremums(info)
+# market.plot_volatility_price(info)
+# market.plot_orders(info)
+# market.plot_liquidity(info)
+# market.plot_price(info)
