@@ -926,6 +926,10 @@ class LiquidityConsumer(Trader):
         self.type = 'Liquidity Consumer'
         self.order_volume = random.uniform(min_volume, max_volume)
         self.acting_prob = acting_prob
+        if random.random() > 0.5:
+            self.action = 'buy'
+        else:
+            self.action = 'sell'
         if self.acting_prob is None:
             self.acting_prob = random.uniform(0.05, 0.95)
 
@@ -933,10 +937,10 @@ class LiquidityConsumer(Trader):
         random_state = random.random()
         if random_state < self.acting_prob:
             random_state = random.random()
-            if random_state > 0.5:  # buy
+            if self.action == 'buy':
                 best_volume = min(self.markets[0].spread_volume()['bid'], self.order_volume)
                 self._buy_market(best_volume)
-            else:  # sell
+            else:
                 best_volume = min(self.markets[0].spread_volume()['ask'], self.order_volume)
                 self._sell_market(best_volume)
             self.order_volume -= best_volume
@@ -1059,7 +1063,7 @@ class AnchoringTrader(Trader):
                 self._cancel_order(self.orders[-1])
 
 
-class LFT(Trader):
+class LowFrequencyTrader(Trader):
     #  https://informs-sim.org/wsc15papers/027.pdf
     def __init__(self, markets: List[Broker], cash: float or int, assets: List[int],
                  max_memory_length: int = 30, order_life: int = 10, evolution_circle: int = 30, evolution_rate=0.3,
