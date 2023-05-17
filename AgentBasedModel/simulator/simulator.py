@@ -28,7 +28,7 @@ class Simulator:
         for trader in self.traders:
             for _ in range(len(self.exchanges)):
                 for __ in range(len(trader.markets)):
-                    if trader.markets[__].id == self.exchanges[_].id:
+                    if trader.markets[__].id() == self.exchanges[_].id():
                         # Dividend payments
                         trader.cash += trader.assets[__] * self.exchanges[_].dividend()  # allow negative dividends
                 # Interest payment
@@ -81,7 +81,6 @@ class SimulatorInfo:
     def __init__(self, exchange: Broker = None, traders: list = None, events: list = None):
         self.exchange = exchange
         self.traders = {t.id: t for t in traders}
-
         # Market Statistics
         self.prices = list()  # price at the end of iteration
         self.spreads = list()  # bid-ask spreads
@@ -169,7 +168,7 @@ class SimulatorInfo:
         divs = self.dividends.copy()
         n = len(divs)  # number of iterations
         divs.extend(self.exchange.dividend(access)[1:access])  # add not recorded future divs
-        r = self.exchange.risk_free
+        r = self.exchange.risk_free()
 
         return [Fundamentalist.evaluate(divs[i:i + access], r) for i in range(n)]
 

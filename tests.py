@@ -21,7 +21,7 @@ class FakeBroker(Broker):
         self.market_orders = []
         self.cancel_orders = []
 
-        self.id = 0
+        self._id = 0
         self._risk_free = 5e-4
         self._transaction_cost = 0.0
 
@@ -64,6 +64,9 @@ class FakeBroker(Broker):
 
     def transaction_cost(self):
         return self._transaction_cost
+
+    def id(self):
+        return self._id
 
 
 class FakeTrader(Trader):
