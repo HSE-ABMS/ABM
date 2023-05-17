@@ -28,7 +28,7 @@ class Simulator:
         for trader in self.traders:
             for _ in range(len(self.exchanges)):
                 for __ in range(len(trader.markets)):
-                    if trader.markets[__].id == self.exchanges[_].id():
+                    if trader.markets[__].id() == self.exchanges[_].id():
                         # Dividend payments
                         trader.cash += trader.assets[__] * self.exchanges[_].dividend()  # allow negative dividends
                 # Interest payment
