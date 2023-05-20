@@ -183,4 +183,4 @@ class TransactionCost(Event):
     def call(self, it: int):
         if super().call(it):
             return
-        self.simulator.exchanges[self.stock_id].transaction_cost = self.cost
+        self.simulator.exchanges[self.stock_id].set_transaction_cost(self.cost)

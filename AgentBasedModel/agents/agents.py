@@ -95,6 +95,9 @@ class Broker:
     def transaction_cost(self) -> float:
         self._not_impl()
 
+    def set_transaction_cost(self, cost):
+        self._not_impl()
+
 
 class ExchangeAgent(Broker):
     global_id = 0
@@ -227,6 +230,9 @@ class ExchangeAgent(Broker):
 
     def transaction_cost(self):
         return self._transaction_cost
+
+    def set_transaction_cost(self, cost):
+        self._transaction_cost = cost
 
     def id(self):
         return self._id
