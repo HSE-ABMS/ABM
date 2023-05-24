@@ -1,3 +1,4 @@
+import queue
 from typing import List, Dict
 
 from AgentBasedModel.utils import Order, OrderList, logging
@@ -160,12 +161,14 @@ class ExchangeAgent(Broker):
     def spread(self) -> dict or None:
         if self._order_book['bid'] and self._order_book['ask']:
             return {'bid': self._order_book['bid'].first.price, 'ask': self._order_book['ask'].first.price}
-        raise Exception(f'There no either bid or ask orders')
+        # raise Exception(f'There no either bid or ask orders')
+        return None
 
     def spread_volume(self) -> dict or None:
         if self._order_book['bid'] and self._order_book['ask']:
             return {'bid': self._order_book['bid'].first.qty, 'ask': self._order_book['ask'].first.qty}
-        raise Exception(f'There no either bid or ask orders')
+        # raise Exception(f'There no either bid or ask orders')
+        return None
 
     def price(self) -> float or None:
         spread = self.spread()
@@ -184,7 +187,10 @@ class ExchangeAgent(Broker):
         return exp(random.normalvariate(0, std))
 
     def limit_order(self, order: Order):
-        bid, ask = self.spread().values()
+        spread = self.spread()
+        if spread is None:
+            return
+        bid, ask = spread.values()
         t_cost = self.transaction_cost()
         if not bid or not ask:
             return
@@ -295,10 +301,14 @@ class Trader:
                 break
         else:
             return quantity
-        mn_index = 0
+        mn_index = -1
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book()['ask'].last.price:
+            if self.markets[_].order_book()['ask'].last is None:
+                continue
+            if mn_index == -1 or self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book()['ask'].last.price:
                 mn_index = _
+        if mn_index == -1:
+            return quantity
         logging.Logger.info(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index,
                       self.markets[mn_index].iteration(), self)
@@ -313,10 +323,14 @@ class Trader:
                 break
         else:
             return quantity
-        mn_index = 0
+        mn_index = -1
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book()['bid'].last.price:
+            if self.markets[_].order_book()['bid'].last is None:
+                continue
+            if mn_index == -1 or self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book()['bid'].last.price:
                 mn_index = _
+        if mn_index == -1:
+            return quantity
         logging.Logger.info(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index,
                       self.markets[mn_index].iteration(), self)
@@ -328,6 +342,10 @@ class Trader:
 
     @abstractmethod
     def refresh(self, info):
+        pass
+
+    @abstractmethod
+    def call(self):
         pass
 
 
@@ -1153,3 +1171,150 @@ class LowFrequencyTrader(Trader):
         self.prev_price.append(p)
         if len(self.prev_price) > self.memory_length:
             self.prev_price = self.prev_price[(len(self.prev_price) - self.memory_length):]
+
+
+class IntradayTrader(Trader):
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None,
+                 day_len: int = 12, night_len: int = 8, **kwargs):
+        super().__init__(markets, cash, assets if assets is not None else [0] * len(markets), **kwargs)
+        self.day_len = day_len
+        self.night_len = night_len
+        self._prev_day = False
+
+    def assets_to_cash(self):
+        for i in range(len(self.markets)):
+            if self.assets[i] == 0:
+                continue
+            if self.assets[i] < 0:
+                if self.markets[i].order_book()['ask'].last is None:
+                    continue
+                order = Order(
+                    self.markets[i].order_book()['ask'].last.price,
+                    -self.assets[i], 'bid', i,
+                    self.markets[i].iteration(), self
+                )
+            else:
+                if self.markets[i].order_book()['bid'].last is None:
+                    continue
+                order = Order(
+                    self.markets[i].order_book()['bid'].last.price,
+                    self.assets[i], 'ask', i,
+                    self.markets[i].iteration(), self
+                )
+            self.markets[i].market_order(order)
+
+    def call(self):
+        is_day = self.markets[0].iteration() % (self.day_len + self.night_len) < self.day_len
+        if is_day:
+            super().call()
+        elif self._prev_day:
+            for order in self.orders.copy():
+                self._cancel_order(order)
+            self.assets_to_cash()
+        self._prev_day = is_day
+
+    def refresh(self, info):
+        super().refresh(info)
+
+
+class TrailingInfo:
+    """
+    Just a light-weight wrapper for information to reduce TrailingAgents' memory usage
+    """
+    def __init__(self, traders):
+        chartists = [t for t in traders if t.type == 'Chartist']
+        self.n_traders = len(traders)
+        self.n_chartists = len(chartists)
+        self.n_optimistic = len([t for t in chartists if t.sentiment == 'Optimistic'])
+        self.n_pessimistic = len(chartists) - self.n_optimistic
+
+
+class TrailingAgent(Trader):
+    """
+    An agent that trails the actions of other agents with some level of noise, randomness
+    and information lag.
+    """
+
+    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None,
+                 target_type: str = 'Chartist', info_lag: int = 1, trailing_factor: float = 0.9,
+                 qty_limit: float = .1):
+        """
+        :param markets: exchange agent link
+        :param cash: number of cash
+        :param assets: number of assets
+        :param target_type: type of agents we will trail on
+        :param info_lag: number of iterations before agent gets info (must be >= 1)
+        :param trailing_factor: how strictly should it trail the orders
+        :param qty_limit: max fraction of orders cost to agent's inventory (0 to turn off)
+        """
+        super().__init__(markets, cash, assets if assets is not None else [0] * len(markets))
+        self.type = 'Trailing Agent'
+        self.sentiment = 'Optimistic' if random.random() > .5 else 'Pessimistic'
+
+        self.target_type = target_type
+        self.trailing_factor = trailing_factor
+        self.info_lag = info_lag
+        self.qty_limit = qty_limit
+
+        self._info_queue = queue.Queue(maxsize=self.info_lag)
+        self._order_queue = queue.Queue(maxsize=self.info_lag)
+        self._target_traders = []
+        self._iter_info = False  # did we get market info on this iteration (for multi-market simulations)
+
+    def refresh(self, info):
+        """
+        We assume that TrailingAgent is not aware of the newest changes
+        so we will just cache it in "inaccessible" part of memory
+        """
+        if not self._target_traders:
+            self._target_traders = [
+                trader for trader in info.traders.values() if trader.type == self.target_type
+            ]
+        if not self._iter_info:
+            info = TrailingInfo(info.traders.values())
+            self._info_queue.put_nowait(info)
+
+            if self._info_queue.full():
+                delayed_info = self._info_queue.get_nowait()
+                self.change_sentiment(delayed_info)
+            self._iter_info = True
+
+    def change_sentiment(self, info: TrailingInfo, freq: float = 0.15):
+        """
+        :param info: SimulatorInfo
+        :param freq: frequency of revaluation of opinion for sentiment
+        """
+        x = (info.n_optimistic - info.n_pessimistic) / info.n_chartists
+        if self.sentiment == 'Pessimistic':
+            x *= -1
+
+        prob = freq * info.n_chartists / info.n_traders * exp(x)
+        if prob > random.random():
+            self.sentiment = 'Pessimistic' if self.sentiment == 'Optimistic' else 'Optimistic'
+
+    def call(self):
+        self._iter_info = False
+        iteration = self.markets[0].iteration()
+        order_type = 'bid' if self.sentiment == 'Optimistic' else 'ask'
+
+        orders: list[Order] = []
+        for trader in self._target_traders:
+            for order in trader.orders:
+                if order.iteration == iteration - self.info_lag and order.order_type == order_type:
+                    orders.append(order)
+        if not orders:
+            return
+
+        price = random.choice([order.price for order in orders])
+        qty = Random.draw_quantity()
+        if abs(self.qty_limit) > 1e-9:
+            qty = min(qty, self.qty_limit * self.equity())
+        qty = round(qty)
+        if qty < 1:
+            return
+
+        if random.random() < self.trailing_factor:
+            if order_type == 'bid':
+                self._buy_limit(qty, price, 0)
+            else:
+                self._sell_limit(qty, price, 0)
