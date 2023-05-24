@@ -1,0 +1,26 @@
+{
+  "exchanges": [
+    {
+      "volume": 1000
+    }
+  ],
+  "traders": [
+    {
+      "count": 10,
+      "type": "Random",
+      "markets": [0],
+      "cash": 1000,
+      "assets": [10]
+    },
+    {
+      "count": 10,
+      "type": "NumericalFundamentalist",
+      "markets": [0],
+      "cash": 1000,
+      "assets": [10]
+    }
+  ],
+  "events": [
+  ],
+  "iterations": 1000
+}
