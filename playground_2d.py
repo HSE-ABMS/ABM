@@ -1,6 +1,8 @@
 import json
 
-from AgentBasedModel import plot_price_fundamental, plot_arbitrage, plot_price, plot_dividend, plot_orders
+from AgentBasedModel.visualization.market import plot_price_fundamental, plot_arbitrage, plot_price, \
+    plot_dividend, plot_orders
+from AgentBasedModel.visualization.trader import plot_equity
 from AgentBasedModel.utils import logging, loader
 
 
@@ -11,7 +13,6 @@ logging.Logger.info(f"Config loaded: {json.dumps(config)}")
 simulator = loader.load_simulator(config)
 simulator.simulate(config["iterations"])
 
-
 info = simulator.info
 for _ in range(len(info)):
     plot_price_fundamental(info[_])
@@ -19,3 +20,5 @@ for _ in range(len(info)):
     plot_price(info[_])
     plot_dividend(info[_])
     plot_orders(info[_])
+
+    plot_equity(info[_])

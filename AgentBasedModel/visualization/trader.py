@@ -9,11 +9,11 @@ def plot_equity(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
     plt.xlabel('Iterations')
     plt.ylabel('Mean Equity')
 
-    labels = ['Random', 'Fundamentalist', 'Chartist']
+    labels = ['Trailing Agent', 'Chartist']
     data = math.aggregate(info.types, info.equities, labels)
     for k, v in data.items():
         if sum([_ is not None for _ in v]):
-            plt.plot(range(rolling, len(v)), math.rolling(v, rolling), label=k)
+            plt.plot(range(rolling, len(v) + rolling), math.rolling(v, rolling), label=k)
 
     plt.legend()
     plt.show()

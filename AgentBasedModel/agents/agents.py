@@ -1177,6 +1177,7 @@ class IntradayTrader(Trader):
     def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None,
                  day_len: int = 12, night_len: int = 8, **kwargs):
         super().__init__(markets, cash, assets if assets is not None else [0] * len(markets), **kwargs)
+        self.type = 'Intraday Trader'
         self.day_len = day_len
         self.night_len = night_len
         self._prev_day = False
@@ -1308,7 +1309,9 @@ class TrailingAgent(Trader):
         price = random.choice([order.price for order in orders])
         qty = Random.draw_quantity()
         if abs(self.qty_limit) > 1e-9:
-            qty = min(qty, self.qty_limit * self.equity())
+            best_price = [market.price() for market in self.markets if market.price() is not None]
+            best_price = min(best_price) if order_type == 'bid' else max(best_price)
+            qty = min(qty, self.qty_limit * self.equity() / best_price)
         qty = round(qty)
         if qty < 1:
             return
