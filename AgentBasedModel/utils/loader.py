@@ -18,7 +18,7 @@ def load_simulator(cfg: dict) -> AgentBasedModel.Simulator:
             if params["trader_type"] in dynamic_agents:
                 raise TypeError(f"{params['trader_type']} can't be used as IntradayTrader's trader_type")
             _trader_type = getattr(AgentBasedModel.agents, params.pop("trader_type"))
-            AgentClass = type(_type, (_trader_type, AgentClass), {})
+            AgentClass = type(_type, (AgentClass, _trader_type), {})
         traders.extend(
             AgentClass(**params) for _ in range(_count)
         )
