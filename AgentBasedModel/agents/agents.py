@@ -18,7 +18,7 @@ class Broker:
     def _not_impl(_):
         raise Exception("Not implemented")
 
-    def __init__(self, price: float or int = 100, std: float or int = 25, volume: int = 1000, rf: float = 5e-4,
+    def __init__(self, price: float | int = 100, std: float | int = 25, volume: int = 1000, rf: float = 5e-4,
                  transaction_cost: float = 0):
         """
         Creates ExchangeAgent with initialised order book and future dividends
@@ -99,7 +99,7 @@ class Broker:
 class ExchangeAgent(Broker):
     global_id = 0
 
-    def __init__(self, price: float or int = 100, std: float or int = 25, volume: int = 1000, rf: float = 5e-4,
+    def __init__(self, price: float | int = 100, std: float | int = 25, volume: int = 1000, rf: float = 5e-4,
                  transaction_cost: float = 0):
         self._id = ExchangeAgent.global_id
         self._iteration = 0
@@ -238,7 +238,7 @@ class Trader:
     """
     id = 0
 
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int]):
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int]):
         """
         Trader that is activated on call to perform action
 
@@ -330,17 +330,17 @@ class Random(Trader):
     Random creates noisy orders to recreate trading in real environment.
     """
 
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None):
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None):
         super().__init__(markets, cash, assets if assets is not None else [0] * len(markets))
         self.type = 'Random'
 
     @staticmethod
-    def draw_delta(std: float or int = 2.5):
+    def draw_delta(std: float | int = 2.5):
         lamb = 1 / std
         return random.expovariate(lamb)
 
     @staticmethod
-    def draw_price(order_type, spread: dict, std: float or int = 2.5) -> float:
+    def draw_price(order_type, spread: dict, std: float | int = 2.5) -> float:
         """
         Draw price for limit order. The price is calculated as:
 
@@ -415,7 +415,7 @@ class Fundamentalist(Trader):
     Fundamentalist evaluate stock value using Constant Dividend Model. Then places orders accordingly
     """
 
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None, access: int = 1):
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None, access: int = 1):
         """
         :param markets: exchange agent link
         :param cash: number of cash
@@ -509,7 +509,7 @@ class Chartist(Trader):
     propagation among other chartists, current price changes
     """
 
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None):
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None):
         """
         :param markets: exchange agent link
         :param cash: number of cash
@@ -599,7 +599,7 @@ class Universalist(Fundamentalist, Chartist):
     Universalist mixes Fundamentalist, Chartist trading strategies allowing to change one strategy to another
     """
 
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None, access: int = 1):
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None, access: int = 1):
         """
         :param markets: exchange agent link
         :param cash: number of cash
@@ -770,7 +770,7 @@ class MarketMaker(Trader):
 
 
 class AwareTrader(Trader):
-    def __init__(self, hesitation: float, delay: int, markets: List[Broker], cash: float or int,
+    def __init__(self, hesitation: float, delay: int, markets: List[Broker], cash: float | int,
                  assets: List[int] = None):
         super().__init__(markets, cash, assets if assets is not None else [0] * len(markets))
         self.info_flow = InfoFlow()
@@ -785,7 +785,7 @@ class AwareTrader(Trader):
 
 
 class NumericalFundamentalist(AwareTrader):
-    def __init__(self, expectation: float, delay: int, markets: List[Broker], cash: float or int,
+    def __init__(self, expectation: float, delay: int, markets: List[Broker], cash: float | int,
                  assets: List[int] = None):
         super().__init__(6.0, delay, markets, cash, assets if assets is not None else [0] * len(markets))
         self.expectation = expectation
@@ -807,7 +807,7 @@ class NumericalFundamentalist(AwareTrader):
 
 
 class AdaptiveNumericalFundamentalist(AwareTrader):
-    def __init__(self, phi: float, expectation: float, delay: int, markets: List[Broker], cash: float or int,
+    def __init__(self, phi: float, expectation: float, delay: int, markets: List[Broker], cash: float | int,
                  assets: List[int] = None):
         super().__init__(6.0, delay, markets, cash, assets if assets is not None else [0] * len(markets))
         self.expectation = expectation
@@ -839,7 +839,7 @@ class LossAverseTrader(Fundamentalist, Chartist):
     Universalist mixes Fundamentalist, Chartist trading strategies allowing to change one strategy to another
     """
 
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None, access: int = 1,
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None, access: int = 1,
                  loss_aversion_parameter: float = 2.25, b: float = 0.04, c: float = 0.04, m: float = 0.975,
                  beta_std: float = 0.05, gamma_std: float = 0.01, r: float = 300):
         """
@@ -939,7 +939,7 @@ class LossAverseTrader(Fundamentalist, Chartist):
 
 class LiquidityConsumer(Trader):
     # https://eprints.soton.ac.uk/423233/2/McGroarty2018_Article_HighFrequencyTradingStrategies.pdf
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None,
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None,
                  min_volume: float = 1000, max_volume: float = 100000, acting_prob: float = 0.1):
         super().__init__(markets, cash, assets if assets is not None else [0] * len(markets))
         self.type = 'Liquidity Consumer'
@@ -967,7 +967,7 @@ class LiquidityConsumer(Trader):
 
 class MomentumTrader(Trader):
     # https://eprints.soton.ac.uk/423233/2/McGroarty2018_Article_HighFrequencyTradingStrategies.pdf
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None, lag: int = 5,
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None, lag: int = 5,
                  order_percent: float = 0.05, entry_threshold: float = 0.001, order_limit: float = 1000,
                  acting_prob: float = 0.4):
         super().__init__(markets, cash, assets if assets is not None else [0] * len(markets))
@@ -997,7 +997,7 @@ class MomentumTrader(Trader):
 
 class MeanReversionTrader(Trader):
     # https://eprints.soton.ac.uk/423233/2/McGroarty2018_Article_HighFrequencyTradingStrategies.pdf
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None, k: int = 3,
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None, k: int = 3,
                  sigma: float = 0.02,
                  discount_factor: float = 0.06, order_volume: float = 1, acting_prob: float = 0.4,
                  tick_size: float = 0.01):
@@ -1027,7 +1027,7 @@ class AnchoringTrader(Chartist):
     Fundamentalist evaluate stock value using Constant Dividend Model. Then places orders accordingly
     """
 
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None,
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None,
                  discount_factor: float = 0.06, belief_weight: float = 0.1, shock_indicator: float = 10,
                  strategy_change_factor: float = 0.06,
     ):
@@ -1073,7 +1073,7 @@ class AnchoringTrader(Chartist):
 
 class LowFrequencyTrader(Trader):
     #  https://informs-sim.org/wsc15papers/027.pdf
-    def __init__(self, markets: List[Broker], cash: float or int, assets: List[int] = None,
+    def __init__(self, markets: List[Broker], cash: float | int, assets: List[int] = None,
                  max_memory_length: int = 30, order_life: int = 10, evolution_circle: int = 30, evolution_rate=0.3,
                  std1: float = 0.3, std2: float = 0.6, std3: float = 0.1, min_size_fluc: float = 2,
                  max_size_fluc: float = 10):

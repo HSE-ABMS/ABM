@@ -3,7 +3,7 @@ import AgentBasedModel.utils.math as math
 import matplotlib.pyplot as plt
 
 
-def plot_price(info: SimulatorInfo, spread=False, rolling: int = 1, figsize=(6, 6)):
+def plot_price(info: SimulatorInfo, spread=False, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title(f'Stock Price {info.exchange.id()}') if rolling == 1 else plt.title(
         f'Stock Price {info.exchange.id()} (MA {rolling})')
@@ -15,11 +15,13 @@ def plot_price(info: SimulatorInfo, spread=False, rolling: int = 1, figsize=(6, 
         v2 = [el['ask'] for el in info.spreads]
         plt.plot(range(rolling - 1, len(v1)), math.rolling(v1, rolling), label='bid', color='green')
         plt.plot(range(rolling - 1, len(v2)), math.rolling(v2, rolling), label='ask', color='red')
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
 def plot_price_fundamental(info: SimulatorInfo, spread=False, access: int = 1, rolling: int = 1,
-                           figsize=(6, 6)):
+                           figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     if rolling == 1:
         plt.title(f'Stock {info.exchange.id()} Fundamental and Market value')
@@ -42,10 +44,12 @@ def plot_price_fundamental(info: SimulatorInfo, spread=False, access: int = 1, r
         if event.stock_id == info.exchange.id:
             plt.axvline(x=event.it, color=event.color, linestyle='--', label=event.__class__.__name__)
     plt.legend()
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_arbitrage(info: SimulatorInfo, access: int = 1, rolling: int = 1, figsize=(6, 6)):
+def plot_arbitrage(info: SimulatorInfo, access: int = 1, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     if rolling == 1:
         plt.title(f'Stock {info.exchange.id()} Fundamental and Market value difference %')
@@ -57,20 +61,24 @@ def plot_arbitrage(info: SimulatorInfo, access: int = 1, rolling: int = 1, figsi
     fundamental = info.fundamental_value(access)
     arbitrage = [(fundamental[i] - market[i]) / fundamental[i] for i in range(len(market))]
     plt.plot(range(rolling, len(arbitrage) + 1), math.rolling(arbitrage, rolling), color='black')
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_dividend(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_dividend(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title(f'Stock {info.exchange.id()} Dividend') if rolling == 1 else plt.title(
         f'Stock {info.exchange.id()} Dividend (MA {rolling})')
     plt.xlabel('Iterations')
     plt.ylabel('Dividend')
     plt.plot(range(rolling, len(info.dividends) + 1), math.rolling(info.dividends, rolling), color='black')
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_orders(info: SimulatorInfo, stat: str = 'quantity', rolling: int = 1, figsize=(6, 6)):
+def plot_orders(info: SimulatorInfo, stat: str = 'quantity', rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title(f'Book {info.exchange.id()} Orders') if rolling == 1 else plt.title(
         f'Book {info.exchange.id()} Orders (MA {rolling})')
@@ -81,40 +89,48 @@ def plot_orders(info: SimulatorInfo, stat: str = 'quantity', rolling: int = 1, f
     plt.plot(range(rolling, len(v1) + 1), math.rolling(v1, rolling), label='bid', color='green')
     plt.plot(range(rolling, len(v2) + 1), math.rolling(v2, rolling), label='ask', color='red')
     plt.legend()
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_volatility_price(info: SimulatorInfo, window: int = 5, figsize=(6, 6)):
+def plot_volatility_price(info: SimulatorInfo, window: int = 5, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title(f'Stock {info.exchange.id()} Price Volatility (window {window})')
     plt.xlabel('Iterations')
     plt.ylabel('Price Volatility')
     volatility = info.price_volatility(window)
     plt.plot(range(window, len(volatility) + window), volatility, color='black')
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_volatility_return(info: SimulatorInfo, window: int = 5, figsize=(6, 6)):
+def plot_volatility_return(info: SimulatorInfo, window: int = 5, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title(f'Stock {info.exchange.id()} Return Volatility (window {window})')
     plt.xlabel('Iterations')
     plt.ylabel('Return Volatility')
     volatility = info.return_volatility(window)
     plt.plot(range(window, len(volatility) + window), volatility, color='black')
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_liquidity(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_liquidity(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title(f'Liquidity {info.exchange.id()}') if rolling == 1 else plt.title(
         f'Liquidity {info.exchange.id()} (MA {rolling})')
     plt.xlabel('Iterations')
     plt.ylabel('Spread / avg. Price')
     plt.plot(info.liquidity(rolling), color='black')
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_ema(info: SimulatorInfo, discount_factor: float = 0.94, rolling: int = 1, figsize=(6, 6)):
+def plot_ema(info: SimulatorInfo, discount_factor: float = 0.94, rolling: int = 1, figsize=(6, 6), filename=""):
     prices = info.prices
     ema = []
     new_ema = []
@@ -144,4 +160,6 @@ def plot_ema(info: SimulatorInfo, discount_factor: float = 0.94, rolling: int = 
     plt.plot(ema, color='red')
     plt.plot(anchoring_ema, color='yellow')
     plt.plot(new_ema, color='orange')
+    if filename != "":
+        plt.savefig(filename)
     plt.show()

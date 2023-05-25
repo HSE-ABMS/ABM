@@ -19,7 +19,7 @@ def print_book(info: SimulatorInfo, n=5):
     logging.Logger.info(val[['Buy', 'Sell', 'Quantity']].fillna('').to_string(index=False))
 
 
-def plot_book(info: SimulatorInfo, bins=50, figsize=(6, 6)):
+def plot_book(info: SimulatorInfo, bins=50, figsize=(6, 6), filename=""):
     bid = list()
     for order in info.exchange.order_book()['bid']:
         for p in range(order.qty):
@@ -34,4 +34,6 @@ def plot_book(info: SimulatorInfo, bins=50, figsize=(6, 6)):
     plt.title('Order book')
     plt.hist(bid, label='bid', color='green', bins=bins)
     plt.hist(ask, label='ask', color='red', bins=bins)
+    if filename != "":
+        plt.savefig(filename)
     plt.show()

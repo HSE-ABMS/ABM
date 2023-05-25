@@ -3,7 +3,7 @@ import AgentBasedModel.utils.math as math
 import matplotlib.pyplot as plt
 
 
-def plot_equity(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_equity(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title('Equity') if rolling == 1 else plt.title(f'Equity (MA {rolling})')
     plt.xlabel('Iterations')
@@ -16,10 +16,12 @@ def plot_equity(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
             plt.plot(range(rolling, len(v)), math.rolling(v, rolling), label=k)
 
     plt.legend()
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_cash(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_cash(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title('Cash') if rolling == 1 else plt.title(f'Cash (MA {rolling})')
     plt.xlabel('Iterations')
@@ -32,10 +34,12 @@ def plot_cash(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
             plt.plot(range(rolling, len(v)), math.rolling(v, rolling), label=k)
 
     plt.legend()
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_assets(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_assets(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title('Assets') if rolling == 1 else plt.title(f'Assets (MA {rolling})')
     plt.xlabel('Iterations')
@@ -48,10 +52,12 @@ def plot_assets(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
             plt.plot(range(rolling, len(v)), math.rolling(v, rolling), label=k)
 
     plt.legend()
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_strategies(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_strategies(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title('Strategy') if rolling == 1 else plt.title(f'Strategy (MA {rolling})')
     plt.xlabel('Iterations')
@@ -62,10 +68,12 @@ def plot_strategies(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
         plt.plot(range(rolling, len(v)), math.rolling(v, rolling), label=tr_type)
 
     plt.legend()
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_strategies2(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_strategies2(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title('Strategy') if rolling == 1 else plt.title(f'Strategy (MA {rolling})')
     plt.xlabel('Iterations')
@@ -73,10 +81,12 @@ def plot_strategies2(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
 
     v = [sum([t == 'Chartist' for t in v.values()]) / len(v) for v in info.types]
     plt.plot(range(rolling, len(v)), math.rolling(v, rolling), color='black')
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_sentiments(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_sentiments(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title('Sentiment') if rolling == 1 else plt.title(f'Sentiment (MA {rolling})')
     plt.xlabel('Iterations')
@@ -87,10 +97,12 @@ def plot_sentiments(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
         plt.plot(range(rolling, len(v)), math.rolling(v, rolling), label=tr_type)
 
     plt.legend()
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_sentiments2(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_sentiments2(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title('Sentiment') if rolling == 1 else plt.title(f'Sentiment (MA {rolling})')
     plt.xlabel('Iterations')
@@ -98,11 +110,12 @@ def plot_sentiments2(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
 
     v = [sum([t == 'Pessimistic' for t in v.values()]) / len(v) for v in info.sentiments]
     plt.plot(range(rolling, len(v)), math.rolling(v, rolling), color='black')
-
+    if filename != "":
+        plt.savefig(filename)
     plt.show()
 
 
-def plot_returns(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
+def plot_returns(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6), filename=""):
     plt.figure(figsize=figsize)
     plt.title('Realized Returns') if rolling == 1 else plt.title(f'Realized Returns (MA {rolling})')
     plt.xlabel('Iterations')
@@ -120,4 +133,6 @@ def plot_returns(info: SimulatorInfo, rolling: int = 1, figsize=(6, 6)):
              ls='--', color='black', label='risk-free rate')
 
     plt.legend()
+    if filename != "":
+        plt.savefig(filename)
     plt.show()

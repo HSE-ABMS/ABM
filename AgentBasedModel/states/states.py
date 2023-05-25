@@ -26,7 +26,7 @@ def aggToShock(sim: Simulator, window: int, funcs: list) -> dict:
 
 def test_trend_kendall(values, category: bool = False, conf: float = .95) -> bool or dict:
     """
-    Kendall’s Tau test.
+    Kendall’s Tau sim_folder.
     H0: No trend exists
     Ha: Some trend exists
     :return: True - trend exist, False - no trend
