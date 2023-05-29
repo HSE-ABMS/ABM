@@ -29,8 +29,6 @@ def fetch_form_parameters(form):
             continue
         if type_hint == "int" or type_hint == "List[int]" or type_hint == "Optional[int]" or type_hint == "Optional[List[int]]":
             params[param] = list(map(int, value.split(",")))
-            if type_hint == "int" or type_hint == "Optional[int]" and len(params[param]) == 1:
-                params[param] = params[param][0]
         elif type_hint == "float" or type_hint == "float or int":
             params[param] = list(map(float, value.split(",")))
         else:
@@ -38,15 +36,26 @@ def fetch_form_parameters(form):
     return res_type, params
 
 
-def dict_to_text_browser(class_name, di):
+def dict_to_text_browser(class_type, class_name, di):
     di2 = di.copy()
-    cnt = 1
+    cnt = None
     if "count" in di:
         cnt = di["count"]
+        if len(cnt) == 1:
+            cnt = cnt[0]
         di2.pop("count")
     res = QTextBrowser()
-    di_str = "\n".join([f"{k}: {v}" for k, v in di.items()])
-    res.setText(f'{cnt} {class_name}: {di_str}')
+    str_li = []
+    for k, v in di.items():
+        if can_bruteforce(class_type, class_name, k) and len(v) == 1:
+            str_li.append(f"{k}: {v[0]}")
+        else:
+            str_li.append(f"{k}: {v}")
+    di_str = "\n".join(str_li)
+    if cnt is None:
+        res.setText(f'{class_name}: {di_str}')
+    else:
+        res.setText(f'{cnt} {class_name}: {di_str}')
     return res
 
 
@@ -105,10 +114,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 class_type = "stats"
             else:
                 class_type = "events"
-            for k in params.keys():
-                if not can_bruteforce(class_type, item_type, k) and is_list_parameter(class_type, item_type, k) and \
-                        params[k] is not None:
-                    params[k] = params[k][0]
             key = class_category[:]
             if not key.endswith("s"):
                 key += "s"
@@ -136,7 +141,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 name2 = class_type[:]
                 if name2 != "stats":
                     name2 = name2[:-1]
-                getattr(self, f"{name2}_layout").addWidget(dict_to_text_browser(di["type"], di["params"]))
+                another_type = "agents"
+                if class_type == "events" or class_type == "stats":
+                    another_type = class_type
+                getattr(self, f"{name2}_layout").addWidget(dict_to_text_browser(another_type, di["type"], di["params"]))
 
     def save_config(self):
         self.update_iterations_count()
@@ -248,6 +256,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         infos = simulator.info
         simulator.simulate(int(self.iterations_spinbox.text()))
         plot_id = 0
+        with open(os.path.join(cur_dir, "config.json"), "w") as fout:
+            json.dump(simulation_settings, fout)
+
         for di in simulation_settings["stats"]:
             di2 = di["params"].copy()
             di2["info"] = infos[di2["info"]]
