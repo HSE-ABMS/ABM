@@ -1,10 +1,9 @@
 from typing import List
 
-from AgentBasedModel.agents import Broker, Universalist, Chartist, Fundamentalist, AwareTrader
+from AgentBasedModel.agents import Broker, Universalist, Chartist, Fundamentalist
 from AgentBasedModel.utils.math import mean, std, difference, rolling
 import random
 from tqdm import tqdm
-from AgentBasedModel.news import InfoFlow
 
 
 class Simulator:
@@ -16,14 +15,10 @@ class Simulator:
         self.exchanges = exchanges
         self.events = [event.link(self) for event in events] if events else None  # link all events to simulator
         self.traders = traders
-        self.info = [
-            SimulatorInfo(
-                self.exchanges[_],
-                self.traders,
-                list(filter(lambda event: event.stock_id == _, events)) if events is not None else None
-            ) for _ in range(len(self.exchanges))
-        ]  # links to existing objects
+        self.info = [SimulatorInfo(self.exchanges[_], self.traders) for _ in
+                     range(len(self.exchanges))]  # links to existing objects
 
+    # TODO:
     def _payments(self):
         for trader in self.traders:
             for _ in range(len(self.exchanges)):
@@ -32,9 +27,9 @@ class Simulator:
                         # Dividend payments
                         trader.cash += trader.assets[__] * self.exchanges[_].dividend()  # allow negative dividends
                 # Interest payment
-                trader.cash += trader.cash * self.exchanges[_].risk_free()  # allow risk-free loan
+                trader.cash += trader.cash * self.exchanges[_].risk_free  # allow risk-free loan
 
-    def simulate(self, n_iter: int, news: InfoFlow = None, silent=True, shuffle=True) -> object:
+    def simulate(self, n_iter: int, silent=False) -> object:
         for it in tqdm(range(n_iter), desc='Simulation', disable=silent):
             # Call scenario
             if self.events:
@@ -47,28 +42,17 @@ class Simulator:
 
             # Change behaviour
             for trader in self.traders:
-                for info in self.info:
-                    trader.refresh(info)
+                trader.refresh(self.info)
 
             # Call Traders
-            if shuffle:
-                random.shuffle(self.traders)
+            random.shuffle(self.traders)
             for trader in self.traders:
                 trader.call()
-
-            # Inform Traders
-            if news is not None:
-                n = news.pull()
-                if n is not None:
-                    for trader in self.traders:
-                        if isinstance(trader, AwareTrader):
-                            trader.inform(n)
 
             # Payments and dividends
             self._payments()  # pay dividends
             for _ in range(len(self.exchanges)):  # generate next dividends
                 self.exchanges[_].generate_dividend()
-                self.exchanges[_].increment_iteration()
 
         return self
 
@@ -78,7 +62,7 @@ class SimulatorInfo:
     SimulatorInfo is responsible for capturing data during simulating
     """
 
-    def __init__(self, exchange: Broker = None, traders: list = None, events: list = None):
+    def __init__(self, exchange: Broker = None, traders: list = None):
         self.exchange = exchange
         self.traders = {t.id: t for t in traders}
         # Market Statistics
@@ -86,7 +70,7 @@ class SimulatorInfo:
         self.spreads = list()  # bid-ask spreads
         self.dividends = list()  # dividend paid at each iteration
         self.orders = list()  # order book statistics
-        self.events = events
+
         # Agent statistics
         self.equities = list()  # agent: equity
         self.cash = list()  # agent: cash

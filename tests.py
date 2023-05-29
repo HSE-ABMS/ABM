@@ -1,22 +1,12 @@
 from AgentBasedModel import Random, Simulator
 from AgentBasedModel import Broker
-from AgentBasedModel.agents import *
-from AgentBasedModel import NumericalNews, InfoFlow
+from AgentBasedModel import Trader
 from random import seed, random
 
-
-class MockLogger:
-    def info(*args, **kwargs):
-        pass
-
-
 class FakeBroker(Broker):
-    def __init__(self, price: float or int, spread: dict or None,
-                 spread_volume: dict = {'bid': [100], 'ask': [100]}):
-        self._iteration = 0
+    def __init__(self, price: float or int, spread: dict or None, ):
         self.fake_price = price
         self.fake_spread = spread
-        self.fake_spread_volume = spread_volume
         self.limit_orders = []
         self.market_orders = []
         self.cancel_orders = []
@@ -33,7 +23,7 @@ class FakeBroker(Broker):
         return self.fake_spread
 
     def spread_volume(self) -> dict or None:
-        return self.fake_spread_volume
+        self._not_impl()
 
     def price(self) -> float:
         return self.fake_price
@@ -68,14 +58,12 @@ class FakeBroker(Broker):
     def id(self):
         return self._id
 
-
 class FakeTrader(Trader):
     def __init__(self, markets, cash, assets):
         super().__init__(markets, cash, assets)
 
     def call(self):
         self._buy_limit(1, 5, 0)
-
 
 def test_faketrader_order_count_1():
     broker = FakeBroker(5, {'bid': 10.0, 'ask': 9.0})
@@ -85,7 +73,6 @@ def test_faketrader_order_count_1():
     assert len(broker.limit_orders) == 10
     assert len(broker.market_orders) == 0
 
-
 def test_faketrader_order_count_2():
     broker = FakeBroker(5, {'bid': 10.0, 'ask': 9.0})
     seed(42)
@@ -93,71 +80,3 @@ def test_faketrader_order_count_2():
     Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10)
     assert len(broker.limit_orders) == 200
     assert len(broker.market_orders) == 0
-
-
-def test_numfund_0_orders():
-    broker = FakeBroker(10, {'bid': 10.0, 'ask': 9.0})
-    seed(42)
-    traders = [NumericalFundamentalist(11, 0, [broker], 100, [5])]
-    Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10, news=None)
-    assert len(broker.limit_orders) == 0
-
-
-def test_numfund_1_order():
-    broker = FakeBroker(10, {'bid': 10.0, 'ask': 9.0})
-    seed(42)
-    traders = [NumericalFundamentalist(11, 0, [broker], 100, [5])]
-    news = InfoFlow()
-    news.put(5, NumericalNews(15))
-    Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10, news=news)
-    assert len(broker.limit_orders) == 1
-    assert broker.limit_orders[0].order_type == 'ask'
-
-
-def test_numfund_2_orders():
-    broker = FakeBroker(10, {'bid': 10.0, 'ask': 9.0})
-    seed(42)
-    traders = [
-        NumericalFundamentalist(11, 0, [broker], 100, [5]),
-        NumericalFundamentalist(20, 1, [broker], 100, [5])
-    ]
-    news = InfoFlow()
-    news.put(5, NumericalNews(15))
-    Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10, news=news)
-    assert len(broker.limit_orders) == 2
-    assert broker.limit_orders[0].order_type == 'ask'
-    assert broker.limit_orders[1].order_type == 'bid'
-
-
-def test_adaptive_numfund_0_orders():
-    broker = FakeBroker(10, {'bid': 10.0, 'ask': 9.0})
-    seed(42)
-    traders = [AdaptiveNumericalFundamentalist(0.1, 11, 0, [broker], 100, [5])]
-    Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10, news=None)
-    assert len(broker.limit_orders) == 0
-
-
-def test_adaptive_numfund_1_orders():
-    broker = FakeBroker(10, {'bid': 10.0, 'ask': 9.0})
-    seed(42)
-    t1 = AdaptiveNumericalFundamentalist(0.1, 11, 0, [broker], 100, [5])
-    traders = [t1]
-    news = InfoFlow()
-    news.put(5, NumericalNews(15))
-    Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10, news=news)
-    assert len(broker.limit_orders) == 1
-    assert broker.limit_orders[0].order_type == 'ask'
-    assert t1.expectation == 11.4
-
-
-def test_adaptive_numfund_1_bid_orders():
-    broker = FakeBroker(10, {'bid': 10.0, 'ask': 9.0})
-    seed(42)
-    t1 = AdaptiveNumericalFundamentalist(0.1, 11, 0, [broker], 100, [5])
-    traders = [t1]
-    news = InfoFlow()
-    news.put(5, NumericalNews(7))
-    Simulator(exchanges=[broker], traders=traders).simulate(n_iter=10, news=news)
-    assert len(broker.limit_orders) == 1
-    assert broker.limit_orders[0].order_type == 'ask'
-    assert t1.expectation == 10.6

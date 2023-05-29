@@ -1,94 +1,109 @@
 import AgentBasedModel.utils.states_math as st_math
-from AgentBasedModel.states.states import test_trend_ols
-import AgentBasedModel.utils.math as math
+from AgentBasedModel.simulator import SimulatorInfo
 
 import numpy as np
-from sklearn.linear_model import LinearRegression
 from statsmodels.tsa.stattools import adfuller
 
-def bear_trend_adx(prices: np.array, window: int = 15) -> list:
-    mov_avg = st_math.moving_average(prices, window)
-    mov_avg = np.argwhere(mov_avg > prices[:-window])
-    di_plus, di_minus, adx_ = st_math.average_directional_index(prices)
-    indexes = np.intersect1d(np.argwhere(di_plus > di_minus), np.argwhere(adx_ > 20))
-    return indexes * window
+class StateIdentification:
+    def __init__(self, info: SimulatorInfo = None, rolling: int = 1, size: int = 10, window: int = 5):
+        if info is not None:
+            self.prices = st_math.rolling(info.prices, rolling)
+            self.volatility = info.price_volatility(window)
+        self.rolling = rolling
+        self.window = window
+        self.size = size
+
+    def set_params(self, adx_th: int = 20, max_th: float = 1.2, min_th: float = 1.2, linreg_th: float = 0.1, panic_std_th: float = 2.5, panic_extr_th: float = 1.5):
+        self.adx_th = adx_th
+        self.max_th = max_th
+        self.min_th = min_th
+        self.linreg_th = linreg_th
+        self.panic_std_th = panic_std_th
+        self.panic_extr_th = panic_extr_th
     
-def bull_trend_adx(prices: np.array, window: int = 5) -> list:
-    mov_avg = st_math.moving_average(prices, window)
-    mov_avg = np.argwhere(mov_avg < prices[:-window])
-    di_plus, di_minus, adx_ = st_math.average_directional_index(prices)
-    indexes = np.intersect1d(np.argwhere(di_plus < di_minus), np.argwhere(adx_ > 20))
-    return indexes * window
+    def bear_adx(self) -> list:
+        di_plus, di_minus, adx = st_math.average_directional_index(self.prices)
+        indexes = np.intersect1d(np.argwhere(di_plus > di_minus), np.argwhere(adx > self.adx_th))
+        return indexes + (self.window + self.size)
+    
+    def bull_adx(self) -> list:
+        di_plus, di_minus, adx = st_math.average_directional_index(self.prices)
+        indexes = np.intersect1d(np.argwhere(di_plus < di_minus), np.argwhere(adx > self.adx_th))
+        return indexes + (self.window + self.size)
+    
+    def extremum(self) -> list:
+        bear_result = []
+        bull_result = []
+        for i in range(self.size, len(self.prices), self.size):
+            if max(self.prices[i - self.window:i+self.window]) >= self.max_th * min(self.prices[max(0, i + self.window - len(self.prices)//self.window):i +self.size + self.window]):
+                bear_result.append(i)
+            if min(self.prices[i - self.window:i+self.window]) < self.min_th * max(self.prices[max(0, i + self.window - len(self.prices)//self.window):i +self.size+ self.window]):
+                bull_result.append(i)
+        return bear_result, bull_result
+    
+    def linear_regresion(self) -> list:
+        coefs = []
+        for i in range(self.size, len(self.prices) - self.window - 1, self.size):
+            X = self.prices[i -self.window:min(len(self.prices), (i + self.size + self.window))].reshape(-1, 1)
+            y = np.arange(i -self.window, min(len(self.prices), i + self.size + self.window)).reshape(-1, 1)
+            result = st_math.linear_regression(X, y)
+            coefs.append(result)
+        return coefs
+    
+    def adfuller_test(self) -> list:
+        indexes = []
+        for i in range(self.size, len(self.prices), self.size):
+            result = adfuller(self.prices[i - self.window:i + self.size + self.window])
+            if st_math.adfuller_check(result[4], result[1]):
+                indexes.append(i)
+        return indexes
 
-def trend_extremum(prices: np.array, window: int = 15) -> list:
-    bear_result = []
-    bull_result = []
-    for i in range(window, len(prices)-window, window):
-        if prices[i] >= 1.15 * min(prices[max(0, i - len(prices)//window):i + window]):
-            bear_result.append(i)
-        if prices[i] * 1.15 <= max(prices[max(0, i - len(prices)//window):i+window]):
-            bull_result.append(i)
-    return bear_result, bull_result
+    def panic_std_volatility(self) -> list:
+        indexes = []
+        for i in range(self.window + self.size, len(self.volatility), self.size):
+            if max(self.volatility[i:i+self.size]) > np.mean(self.volatility) * self.panic_std_th:
+                indexes.append(i - self.window)
+        return indexes
 
-def adfuller_test(prices: np.array, window: int = 5) -> list:
-    adfuller_result = []
-    for i in range(window * 10, len(prices)- window * 10, window):
-        result = adfuller(prices[i-window * 10:window * 10+i])
-        if st_math.adfuller_check(result[4], result[1]):
-            adfuller_result.append(i)
-    return np.array(adfuller_result)
-
-def linreg_trends(X: np.array, y: np.array) -> int:
-    regr = LinearRegression()
-    regr.fit(X, y)
-    return regr.coef_[0][0]
-
-# def panic_std_volatility(volatilities: np.array, window: int = 5, tol: float = 5) -> list:
-#     vol_result = []
-#     for i in range(window, len(volatilities) - window, window):
-#         if max(volatilities[i-window:i+window]) >= tol * math.mean(volatilities):
-#             vol_result.append(i)
-#     return vol_result
-
-# def panic_ols_test(vols: np.array, window: int = 5, tol: float = 0.2, conf = 0.95) -> list:
-#     size = window * 2
-#     vol_result = []
-#     for i in range(size, len(vols) - size, size):
-#         test = test_trend_ols(vols[i-size:i+size])
-#         if test['value'] > tol and test['p-value'] < (1 - conf):
-#             vol_result.append(i)
-#     return vol_result
-
-# def panic_extremum(volatilities: np.array, window: int = 15) -> list:
-#     result = []
-#     for i in range(window, len(volatilities)-window, window):
-#         if volatilities[i] * 1.5 <= max(volatilities[0:i+window]):
-#             result.append(i)
-#     return result
-
-# def panic_order_book(quantities: np.array, window: int = 15, tol = 0.2) -> list:
-#     result = []
-#     print(quantities[0:2]['quantities'])
-#     for i in range(window, len(quantities)-window, window):
-#         ask_count = 0
-#         bid_count = 0
-#         for i in range(i-window, i+window):
-#             ask_count += quantities[i]['quantities']['ask']
-#             bid_count += quantities[i]['quantities']['bid']
-#         if :
-#             result.append(i)
-#     return result
-
-# def panic_spread(spreads: np.array, window: int = 15) -> list:
-#     result = []
-#     mean_spread = 0
-#     for i in range(len(spreads)):
-#         mean_spread += spreads[i]['ask'] - spreads[i]['bid']
-#     mean_spread /= len(spreads)
-#     for i in range(window, len(spreads)-window, window):
-#         max_spread = 0
-#         for i in range(i-window, i+window):
-#             max_spread = max(max_spread, spreads[i]['ask'] - spreads[i]['bid'])
-#         if (spreads[i]['ask'] - spreads[i]['bid']) >= mean_spread:
-#             result.append(i)
-#     return result
+    def panic_extremum(self) -> list:
+        indexes = []
+        for i in range(self.size + self.window, len(self.prices), self.size):
+            if min(self.prices[i:i+self.size]) * self.panic_extr_th <= np.mean(self.prices[i-self.size:i]):
+                indexes.append(i - self.window)
+        return indexes
+    
+    def states(self) -> dict:
+        states = {'bull': [], 'bear': [], 'stable': [], 'panic': [], 'undefined': []}
+        pattern_aray = []
+        bear_adx = self.bear_adx()
+        bull_adx = self.bull_adx()
+        bear_extr, bull_extr = self.extremum()
+        static_adf_result = self.adfuller_test()
+        linreg_coefs = self.linear_regresion()
+        panic_std = self.panic_std_volatility()
+        panic_extr = self.panic_extremum()
+        for i in range(self.size, len(self.prices), self.size):
+            if i in panic_std or i in panic_extr:
+                states['panic'].append(i)
+                pattern_aray.append(-100)
+                continue
+            result = linreg_coefs[i // self.size - 1]
+            if result > self.linreg_th:
+                states['bull'].append(i)
+                pattern_aray.append(1)
+            elif 0 < result <= self.linreg_th and (i in bear_adx or i in bear_extr):
+                states['bull'].append(i)
+                pattern_aray.append(1)
+            elif result < -self.linreg_th:
+                states['bear'].append(i)
+                pattern_aray.append(-1)
+            elif 0 > result >= -self.linreg_th and (i in bull_adx or i in bull_extr):
+                states['bear'].append(i)
+                pattern_aray.append(-1)
+            elif i in static_adf_result:
+                states['stable'].append(i)
+                pattern_aray.append(0)
+            else:
+                states['stable'].append(i)
+                pattern_aray.append(0)
+        return states, pattern_aray

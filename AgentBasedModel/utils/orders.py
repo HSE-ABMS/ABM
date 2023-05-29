@@ -1,5 +1,3 @@
-from AgentBasedModel.utils import logging
-
 class Order:
     """
     Order contains all relevant information about order, it can be of two types: bid, ask. Supports binary comparison
@@ -9,17 +7,15 @@ class Order:
     """
     order_id = 0
 
-    def __init__(self, price, qty, order_type, market_id, iteration, trader_link=None):
+    def __init__(self, price, qty, order_type, market_id, trader_link=None):
         # Properties
-        self.iteration = iteration
         self.price = price
         self.qty = qty
         self.order_type = order_type
         self.trader = trader_link
         self.order_id = Order.order_id
         self.market_id = market_id
-        logging.Logger.info(
-            f"New ORDER {self.order_id} for {self.market_id} {self.trader.type + ' ' + str(self.trader.id) if self.trader else None}")
+        # print(f"New ORDER {self.order_id} for {self.market_id} {self.trader.type + ' ' + str(self.trader.id) if self.trader else None}")
         # Connections
         self.left = None
         self.right = None
@@ -133,17 +129,6 @@ class OrderList:
     def to_list(self) -> list:
         return [order.to_dict() for order in self]
 
-    def book(self, order_type : str, size: int) -> dict:
-        book = {}
-
-        for order in self:
-            price = int(order.price * 10)
-            book[price] = book.get(price, 0) + order.qty
-
-        if order_type == 'bid':
-            return sorted(list(book.items()), key=lambda x: x[0])[-size:]
-        return sorted(list(book.items()), key=lambda x: x[0])[:size]
-
     def remove(self, order: Order):
         if order.order_type != self.order_type:
             raise ValueError(f'Wrong order type! OrderList: {self.order_type}, Order: {order.order_type}')
@@ -256,20 +241,20 @@ class OrderList:
                 if order.trader is not None:
                     order.trader.cash -= tmp_price * tmp_qty * (1 + t_cost)
                     order.trader.assets[order.market_id] += tmp_qty
-                    logging.Logger.info(f"{order.trader.name} ({order.trader.type}) MarketOrder(BID) {order.market_id}")
+                    # print(f"{order.trader.name} ({order.trader.type}) MarketOrder(BID) {order.market_id}")
                 if val.trader is not None:
                     val.trader.cash += tmp_price * tmp_qty * (1 - t_cost)
-                    logging.Logger.info(f"{val.trader.name} ({val.trader.type}) MarketOrder(BID) {order.market_id}")
+                    # print(f"{val.trader.name} ({val.trader.type}) MarketOrder(BID) {order.market_id}")
                     val.trader.assets[val.market_id] -= tmp_qty
 
             if order.order_type == 'ask':
                 if order.trader is not None:
                     order.trader.cash += tmp_price * tmp_qty * (1 - t_cost)
-                    logging.Logger.info(f"{order.trader.name} ({order.trader.type}) MarketOrder(ASK) {order.market_id}")
+                    # print(f"{order.trader.name} ({order.trader.type}) MarketOrder(ASK) {order.market_id}")
                     order.trader.assets[order.market_id] -= tmp_qty
                 if val.trader is not None:
                     val.trader.cash -= tmp_price * tmp_qty * (1 + t_cost)
-                    logging.Logger.info(f"{val.trader.name} ({val.trader.type}) MarketOrder(ASK) {order.market_id}")
+                    # print(f"{val.trader.name} ({val.trader.type}) MarketOrder(ASK) {order.market_id}")
                     val.trader.assets[val.market_id] += tmp_qty
 
             # Clear remaining
@@ -281,7 +266,7 @@ class OrderList:
     @classmethod
     def from_list(cls, order_list, sort=False):
         order_list = [Order(order['price'], order['qty'], order['order_type'],
-                            order['market_id'], order['iteration'], order.get('trader_link')) for order in order_list]
+                            order['market_id'], order.get('trader_link')) for order in order_list]
         order_list_obj = OrderList(order_list[0].order_type)
         if sort:
             for order in order_list:

@@ -1,1 +1,3 @@
 from AgentBasedModel.states.states import aggToShock, general_states
+import AgentBasedModel.states.pattern
+import AgentBasedModel.states.states_pattern

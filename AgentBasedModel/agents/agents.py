@@ -1,13 +1,9 @@
-from typing import List, Dict
+from typing import List
 
-from AgentBasedModel.utils import Order, OrderList, logging
+from AgentBasedModel.utils import Order, OrderList
 from AgentBasedModel.utils.math import exp, mean
-from AgentBasedModel.news import InfoFlow
 import random
 from abc import abstractmethod
-from queue import Queue
-from AgentBasedModel.news.news import News, CategoricalNews, NumericalNews
-from math import log
 
 
 class Broker:
@@ -56,7 +52,6 @@ class Broker:
     def price(self) -> float:
         """
         Returns current stock price as mean between best bid and ask prices
-        If price cannot be determined, None is returned
         """
         self._not_impl()
 
@@ -98,7 +93,6 @@ class Broker:
     def set_transaction_cost(self, cost):
         self._not_impl()
 
-
 class ExchangeAgent(Broker):
     global_id = 0
 
@@ -111,10 +105,9 @@ class ExchangeAgent(Broker):
         self.volume = volume
         self._order_book = {'bid': OrderList('bid'), 'ask': OrderList('ask')}
         self.dividend_book = list()  # act like queue
-        self._risk_free = rf
-        self._transaction_cost = transaction_cost
+        self.risk_free = rf
+        self.transaction_cost = transaction_cost
         self._fill_book(price, std, volume, rf * price)  # initialise both order book and dividend book
-        logging.Logger.info(f"{self.name}")
 
     def generate_dividend(self):
         # Generate future dividend
@@ -157,7 +150,6 @@ class ExchangeAgent(Broker):
         self._order_book['bid'] = OrderList.from_list([order for order in self._order_book['bid'] if order.qty > 0])
         self._order_book['ask'] = OrderList.from_list([order for order in self._order_book['ask'] if order.qty > 0])
 
-
     def spread(self) -> dict or None:
         if self._order_book['bid'] and self._order_book['ask']:
             return {'bid': self._order_book['bid'].first.price, 'ask': self._order_book['ask'].first.price}
@@ -168,12 +160,11 @@ class ExchangeAgent(Broker):
             return {'bid': self._order_book['bid'].first.qty, 'ask': self._order_book['ask'].first.qty}
         raise Exception(f'There no either bid or ask orders')
 
-    def price(self) -> float or None:
+    def price(self) -> float:
         spread = self.spread()
         if spread:
             return round((spread['bid'] + spread['ask']) / 2, 1)
-        # raise Exception(f'Price cannot be determined, since no orders either bid or ask')
-        return None
+        raise Exception(f'Price cannot be determined, since no orders either bid or ask')
 
     def dividend(self, access: int = None) -> list or float:
         if access is None:
@@ -186,7 +177,7 @@ class ExchangeAgent(Broker):
 
     def limit_order(self, order: Order):
         bid, ask = self.spread().values()
-        t_cost = self.transaction_cost()
+        t_cost = self.transaction_cost
         if not bid or not ask:
             return
 
@@ -204,7 +195,7 @@ class ExchangeAgent(Broker):
                 self._order_book['ask'].insert(order)
 
     def market_order(self, order: Order) -> Order:
-        t_cost = self.transaction_cost()
+        t_cost = self.transaction_cost
         if order.order_type == 'bid':
             order = self._order_book['ask'].fulfill(order, t_cost)
         elif order.order_type == 'ask':
@@ -263,7 +254,7 @@ class Trader:
 
         self.cash = cash
         self.assets = assets
-        logging.Logger.info(f"{self.name} {len(assets)}")
+        # print(f"{self.name} {len(assets)}")
 
     def __str__(self) -> str:
         return f'{self.name} ({self.type})'
@@ -278,12 +269,12 @@ class Trader:
         return self.cash + price
 
     def _buy_limit(self, quantity, price, market_id):
-        order = Order(round(price, 1), round(quantity), 'bid', market_id, self.markets[market_id].iteration(), self)
+        order = Order(round(price, 1), round(quantity), 'bid', market_id, self)
         self.orders.append(order)
         self.markets[market_id].limit_order(order)
 
     def _sell_limit(self, quantity, price, market_id):
-        order = Order(round(price, 1), round(quantity), 'ask', market_id, self.markets[market_id].iteration(), self)
+        order = Order(round(price, 1), round(quantity), 'ask', market_id, self)
         self.orders.append(order)
         self.markets[market_id].limit_order(order)
 
@@ -298,11 +289,10 @@ class Trader:
             return quantity
         mn_index = 0
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book()['ask'].last.price:
+            if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book['ask'].last.price:
                 mn_index = _
-        logging.Logger.info(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
-        order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index,
-                      self.markets[mn_index].iteration(), self)
+        # print(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
+        order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index, self)
         return self.markets[mn_index].market_order(order).qty
 
     def _sell_market(self, quantity) -> int:
@@ -316,11 +306,10 @@ class Trader:
             return quantity
         mn_index = 0
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book()['bid'].last.price:
+            if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book['bid'].last.price:
                 mn_index = _
-        logging.Logger.info(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
-        order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index,
-                      self.markets[mn_index].iteration(), self)
+        # print(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
+        order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index, self)
         return self.markets[mn_index].market_order(order).qty
 
     def _cancel_order(self, order: Order):
@@ -330,7 +319,6 @@ class Trader:
     @abstractmethod
     def refresh(self, info):
         pass
-
 
 class Random(Trader):
     """
@@ -463,11 +451,11 @@ class Fundamentalist(Trader):
         return min(q, 5)
 
     def call(self):
-        pf = round(self.evaluate(self.markets[0].dividend(self.access), self.markets[0].risk_free()),
+        pf = round(self.evaluate(self.markets[0].dividend(self.access), self.markets[0].risk_free),
                    1)  # fundamental price
         p = self.markets[0].price()
         spread = self.markets[0].spread()
-        t_cost = self.markets[0].transaction_cost()
+        t_cost = self.markets[0].transaction_cost
 
         if spread is None:
             return
@@ -534,7 +522,7 @@ class Chartist(Trader):
             for _ in range(len(self.markets)):
                 if self.markets[_].price() < self.markets[mn_index].price():
                     mn_index = _
-            t_cost = self.markets[mn_index].transaction_cost()
+            t_cost = self.markets[mn_index].transaction_cost
             spread = self.markets[mn_index].spread()
             # Market order
             if random_state > .85:
@@ -551,7 +539,7 @@ class Chartist(Trader):
             for _ in range(len(self.markets)):
                 if self.markets[_].price() < self.markets[mx_index].price():
                     mx_index = _
-            t_cost = self.markets[mx_index].transaction_cost()
+            t_cost = self.markets[mx_index].transaction_cost
             spread = self.markets[mx_index].spread()
             # Market order
             if random_state > .85:
@@ -600,7 +588,6 @@ class Chartist(Trader):
     def refresh(self, info):
         self.change_sentiment(info)
 
-
 class Universalist(Fundamentalist, Chartist):
     """
     Universalist mixes Fundamentalist, Chartist trading strategies allowing to change one strategy to another
@@ -647,8 +634,8 @@ class Universalist(Fundamentalist, Chartist):
 
         dp = info.prices[-1] - info.prices[-2] if len(info.prices) > 1 else 0  # price derivative
         p = self.markets[0].price()  # market price
-        pf = self.evaluate(self.markets[0].dividend(self.access), self.markets[0].risk_free())  # fundamental price
-        r = pf * self.markets[0].risk_free()  # expected dividend return
+        pf = self.evaluate(self.markets[0].dividend(self.access), self.markets[0].risk_free)  # fundamental price
+        r = pf * self.markets[0].risk_free  # expected dividend return
         R = mean(info.returns[-1].values())  # average return in economy
 
         # Change sentiment
@@ -683,7 +670,6 @@ class Universalist(Fundamentalist, Chartist):
     def refresh(self, info):
         self.change_strategy(info)
 
-
 class MarketMaker(Trader):
     """
     MarketMaker creates limit orders on both sides of the spread trying to gain on
@@ -696,43 +682,28 @@ class MarketMaker(Trader):
             softlimits = [100] * len(self.markets)
         self.softlimits = softlimits
         self.type = 'Market Maker'
-        self.uls = self.softlimits
-        self.lls = [-softlimit for softlimit in self.softlimits]
+        self.softlimit = softlimit
+        self.ul = softlimit
+        self.ll = -softlimit
         self.panic = False
-        self.prev_cash = cash
 
     def call(self):
-        logging.Logger.info(f"Market Maker {self.id} PnL {self.cash - self.prev_cash}. Cash: {self.cash}")
         # Clear previous orders
         for order in self.orders.copy():
             self._cancel_order(order)
 
-        # Calculate total bid and ask volume for all markets
-        total_bid_volume = 0
-        total_ask_volume = 0
-        for i in range(len(self.markets)):
-            bid_volume = max(0, (self.uls[i] - 1 - self.assets[i]) // 2)
-            ask_volume = max(0, (self.assets[i] - 1 - self.uls[i]) // 2)
-            total_bid_volume += bid_volume
-            total_ask_volume += ask_volume
+        spread = self.market.spread()
+
+        # Calculate bid and ask volume
+        bid_volume = max(0., self.ul - 1 - self.assets)
+        ask_volume = max(0., self.assets - self.ll - 1)
 
         # If in panic state we only either sell or buy commodities
-        if not total_bid_volume or not total_ask_volume:
+        if not bid_volume or not ask_volume:
             self.panic = True
-            self._buy_market(
-                sum(self.lls[i] + self.lls[i] for i in range(len(self.markets)))) if total_ask_volume == 0 else None
-            self._sell_market((sum(self.assets))) if total_bid_volume == 0 else None
+            self._buy_market((self.ul + self.ll) / 2 - self.assets) if ask_volume is None else None
+            self._sell_market(self.assets - (self.ul + self.ll) / 2) if bid_volume is None else None
         else:
-            # Calculate spread and price offset for each market
-            for i in range(len(self.markets)):
-                spread = self.markets[i].spread()
-                base_offset = min(1, (spread['ask'] - spread['bid']) * (self.assets[i] / self.lls[i]))
-                bid_volume = max(0, (self.uls[i] - 1 - self.assets[i]) // 2)
-                ask_volume = max(0, (self.assets[i] - 1 - self.lls[i]) // 2)
-                bid_price = spread['bid'] + base_offset
-                ask_price = spread['ask'] - base_offset
-                self._buy_limit(bid_volume, bid_price, i)
-                self._sell_limit(ask_volume, ask_price, i)
             self.panic = False
         self.prev_cash = self.cash
     # def call(self):

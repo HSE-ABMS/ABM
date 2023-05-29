@@ -1,10 +1,7 @@
 {
   "exchanges": [
     {
-      "volume": 1000
-    },
-    {
-      "volume": 1000
+      "volume": 10000
     }
   ],
   "traders": [
@@ -26,40 +23,34 @@
       "count": 10,
       "type": "Chartist",
       "cash": 1000,
-      "markets": [0, 1],
-      "assets": [0, 0]
+      "markets": [0],
+      "assets": [0]
     },
     {
-      "count": 1,
+      "count": 5,
       "type": "MarketMaker",
       "cash": 1000,
-      "markets": [0, 1],
-      "softlimits": [0, 0],
-      "assets": [0, 0]
+      "markets": [0],
+      "softlimits": [0],
+      "assets": [0]
     }
   ],
   "events": [
     {
       "type": "MarketPriceShock",
       "it": 200,
-      "price_change": -50,
-      "stock_id": 0
-    },
-    {
-      "type": "MarketPriceShock",
-      "it": 304,
-      "price_change": -50,
+      "price_change": -20,
       "stock_id": 0
     },
     {
       "type": "LiquidityShock",
-      "it": 109,
+      "it": 350,
       "volume_change": -20,
       "stock_id": 0
     },
     {
       "type": "TransactionCost",
-      "it": 320,
+      "it": 750,
       "cost": 0.1,
       "stock_id": 0
     }

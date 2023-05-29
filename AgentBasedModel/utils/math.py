@@ -1,8 +1,6 @@
 from math import exp
 
-
 def mean(x: list) -> float:
-
     return sum(x) / len(x)
 
 
@@ -23,6 +21,7 @@ def rolling(x: list, n) -> list:
         for i in range(len(x) - n):
             xs = [el for el in x[i:i+n] if el is not None]
             res.append(mean(xs)) if xs else res.append(None)
+        return res
 
 
 def difference(x: list) -> list:
