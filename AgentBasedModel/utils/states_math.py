@@ -2,6 +2,7 @@ import AgentBasedModel.utils.math as math
 
 import numpy as np
 from sklearn.linear_model import LinearRegression
+np.seterr(divide = 'ignore') 
 
 def rolling(array: np.array, n) -> np.array:
     return np.array(math.rolling(array, n))
@@ -23,7 +24,7 @@ def average_directional_index(array: np.array, size: int = 10, window: int = 5) 
     dm_minus = np.zeros(len(array) // size)
     for i in range(1, len(array) // size):
         up_move = max(array[i * size - window: i * size]) - max(array[i * size: i * size + window])
-        down_move = min(array[i * size - window: i * size]) - min(array[i * size - window: i * size ])
+        down_move = min(array[i * size - window: i * size]) - min(array[i * size: i * size +window])
         if up_move > down_move and up_move > 0:
             dm_plus[i] = up_move
         if up_move < down_move and down_move > 0:

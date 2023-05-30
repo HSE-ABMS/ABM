@@ -6,39 +6,67 @@ from AgentBasedModel.visualization.states import StatesVisualization
 from AgentBasedModel.events.events import MarketPriceShock
 import itertools
 
-infos = []
-def generateAgents(minVolume, maxVolume, exchangeCount):
-    exchangesAgents = []
-    for _ in range(exchangeCount):
-        exchangesAgents.append(ExchangeAgent(volume=500))
-    return exchangesAgents
+# SIMULATOR INFO
 
-
-# Common patterns
-# for it in itertools.product(2**np.arange(4), repeat=4):
-it = [1, 1, 1, 1]
-exchanges = [ExchangeAgent()]
+xg = ExchangeAgent()
 traders = []
-traders.extend([Random(exchanges, cash=1000, assets=[0]) for _ in range(it[0])])
-# traders += [Fundamentalist(xg, cash=1000, assets=[0]) for _ in range(it[1])]
-# traders += [Chartist(xg, cash=1000, assets=[0]) for _ in range(it[2])]
-# traders += [MarketMaker(xg, cash=1000, assets=[0]) for _ in range(it[3])]
+traders += [Random([xg], cash=1000) for i in range(10)]
+traders += [Fundamentalist([xg], cash=1000) for i in range(10)]
+traders += [Chartist([xg], cash=1000) for i in range(10)]
+traders += [MarketMaker([xg], cash=1000) for i in range(10)]
 
-simulator = Simulator(**{
-    'exchanges': exchanges,
-    'traders': traders,
-    'events': [MarketPriceShock(200, -10)],
-})
+sim = Simulator(exchanges=[xg], traders=traders, events=[MarketPriceShock(200, -10), TransactionCost(500, 5)])
 
 try:
-    simulator.simulate(100)
+    sim.simulate(1000)
 except Exception as e:
     print(e)
-    # continue
-info = simulator.info[0]
-infos.append(info)
+    exit()
 
-# vis = StatesVisualization()
-# vis.set_state_params()
-# vis.set_pattern_params()
-# vis.plot_common_patterns(infos, True)
+vis = StatesVisualization(sim.info[0])
+vis.set_state_params()
+vis.set_pattern_params()
+
+# SIMULATOR INFO
+# vis.plot_price()
+# vis.plot_volatility()
+# vis.plot_moving_average()
+
+# INDICATORS AND OTHER METHODS
+# vis.plot_adx()
+# vis.plot_linreg()
+# vis.plot_extremums()
+# vis.plot_adf_test()
+# vis.plot_panic_std()
+
+# ALL STATES
+# vis.plot_states()
+
+# LOCAL PATTERNS
+# vis.plot_local_patterns(True)
+
+# COMMON PATTERNS
+infos = []
+for it in itertools.product(2**np.arange(2), repeat=4):
+    xg = ExchangeAgent()
+    traders = []
+    traders += [Random([xg], cash=1000) for i in range(it[0])]
+    traders += [Fundamentalist([xg], cash=1000) for i in range(it[1])]
+    traders += [Chartist([xg], cash=1000) for i in range(it[2])]
+    traders += [MarketMaker([xg], cash=1000) for i in range(it[3])]
+
+    sim = Simulator(exchanges=[xg], traders=traders, events=[MarketPriceShock(200, -10)])
+    sim.simulate(500)
+
+    try:
+        sim.simulate(100)
+    except Exception as e:
+        print(e)
+        continue
+    info = sim.info[0]
+    infos.append(info)
+
+vis = StatesVisualization()
+vis.set_state_params()
+vis.set_pattern_params()
+vis.plot_common_patterns(infos, True)

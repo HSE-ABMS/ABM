@@ -2,6 +2,7 @@ import AgentBasedModel.utils.states_math as st_math
 from AgentBasedModel.simulator import SimulatorInfo
 
 import numpy as np
+np.seterr(divide = 'ignore') 
 from statsmodels.tsa.stattools import adfuller
 
 class StateIdentification:
@@ -41,14 +42,14 @@ class StateIdentification:
                 bull_result.append(i)
         return bear_result, bull_result
     
-    def linear_regresion(self) -> list:
+    def linear_regression(self) -> np.array:
         coefs = []
         for i in range(self.size, len(self.prices) - self.window - 1, self.size):
             X = self.prices[i -self.window:min(len(self.prices), (i + self.size + self.window))].reshape(-1, 1)
             y = np.arange(i -self.window, min(len(self.prices), i + self.size + self.window)).reshape(-1, 1)
             result = st_math.linear_regression(X, y)
             coefs.append(result)
-        return coefs
+        return np.array(coefs)
     
     def adfuller_test(self) -> list:
         indexes = []
@@ -79,7 +80,7 @@ class StateIdentification:
         bull_adx = self.bull_adx()
         bear_extr, bull_extr = self.extremum()
         static_adf_result = self.adfuller_test()
-        linreg_coefs = self.linear_regresion()
+        linreg_coefs = self.linear_regression()
         panic_std = self.panic_std_volatility()
         panic_extr = self.panic_extremum()
         for i in range(self.size, len(self.prices), self.size):

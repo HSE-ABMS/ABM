@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 from AgentBasedModel.utils import Order, OrderList
 from AgentBasedModel.utils.math import exp, mean
@@ -289,7 +289,7 @@ class Trader:
             return quantity
         mn_index = 0
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book['ask'].last.price:
+            if self.markets[_].order_book()['ask'].last.price < self.markets[mn_index].order_book()['ask'].last.price:
                 mn_index = _
         # print(f"{self.name} ({self.type}) BUY {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['ask'].last.price, round(quantity), 'bid', mn_index, self)
@@ -306,7 +306,7 @@ class Trader:
             return quantity
         mn_index = 0
         for _ in range(len(self.markets)):
-            if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book['bid'].last.price:
+            if self.markets[_].order_book()['bid'].last.price > self.markets[mn_index].order_book()['bid'].last.price:
                 mn_index = _
         # print(f"{self.name} ({self.type}) SELL {mn_index}/{len(self.markets)}")
         order = Order(self.markets[mn_index].order_book()['bid'].last.price, round(quantity), 'ask', mn_index, self)
@@ -586,7 +586,7 @@ class Chartist(Trader):
                 self.sentiment = 'Optimistic'
 
     def refresh(self, info):
-        self.change_sentiment(info)
+        self.change_sentiment(info[0])
 
 class Universalist(Fundamentalist, Chartist):
     """
@@ -682,9 +682,9 @@ class MarketMaker(Trader):
             softlimits = [100] * len(self.markets)
         self.softlimits = softlimits
         self.type = 'Market Maker'
-        self.softlimit = softlimit
-        self.ul = softlimit
-        self.ll = -softlimit
+        self.softlimit = softlimits
+        self.ul = softlimits
+        self.ll = [-i for i in softlimits]
         self.panic = False
 
     def call(self):
@@ -692,11 +692,11 @@ class MarketMaker(Trader):
         for order in self.orders.copy():
             self._cancel_order(order)
 
-        spread = self.market.spread()
+        spread = self.markets[0].spread()
 
         # Calculate bid and ask volume
-        bid_volume = max(0., self.ul - 1 - self.assets)
-        ask_volume = max(0., self.assets - self.ll - 1)
+        bid_volume = max(0., self.ul[0] - 1 - self.assets[0])
+        ask_volume = max(0., self.assets[0] - self.ll[0] - 1)
 
         # If in panic state we only either sell or buy commodities
         if not bid_volume or not ask_volume:

@@ -23,7 +23,7 @@ class StatesVisualization:
         self.state_idf = StateIdentification(info, rolling, size, window)
         self.pattern_det = PatternDetection()
 
-    def set_state_params(self, adx_th: int = 20, max_th: float = 1.2, min_th: float = 1.2, linreg_th: float = 0.5, panic_std_th: float = 2.5, panic_extr_th: float = 1.5):
+    def set_state_params(self, adx_th: int = 20, max_th: float = 1.1, min_th: float = 2, linreg_th: float = 0.5, panic_std_th: float = 2.5, panic_extr_th: float = 1.2):
         self.adx_th = adx_th
         self.max_th = max_th
         self.min_th = min_th
@@ -64,46 +64,55 @@ class StatesVisualization:
     
     def plot_linreg(self):
         self.start_plot('Trends with Linear Regression')
-        linreg_coefs = states_pattern.linear_regression_trends()
-        bear_indexes = np.argwhere(linreg_coefs > self.linreg_th)
-        bull_indexes = np.argwhere(linreg_coefs < -self.linreg_th)
-        stable_indexes = np.argwhere(abs(linreg_coefs) <= self.linreg_th)
-        plt.plot(bear_indexes, self.prices[bear_indexes], color='green')
-        plt.plot(bull_indexes, self.prices[bull_indexes], color='red')
-        plt.plot(stable_indexes, self.prices[stable_indexes], color='blue')
+        linreg_coefs = self.state_idf.linear_regression()
+        bear_indexes = list(np.argwhere(linreg_coefs > self.linreg_th))
+        bull_indexes = list(np.argwhere(linreg_coefs < -self.linreg_th))
+        stable_indexes = list(np.argwhere(abs(linreg_coefs) <= self.linreg_th))
+        for ind in bear_indexes:
+            plt.plot(range((ind[0])*self.window , (ind[0]+1)*self.window+1), self.prices[(ind[0])*self.window: (ind[0]+1)*self.window+1], color='green')
+        for ind in bull_indexes:
+            plt.plot(range((ind[0])*self.window , (ind[0]+1)*self.window+1), self.prices[(ind[0])*self.window: (ind[0]+1)*self.window+1], color='red')
+        for ind in stable_indexes:
+            plt.plot(range((ind[0])*self.window , (ind[0]+1)*self.window+1), self.prices[(ind[0])*self.window: (ind[0]+1)*self.window+1], color='blue')
         plt.show()
     
     def plot_extremums(self):
         self.start_plot('Trends with extremums')
 
-        bear_trend_extr, bull_trend_extr = states_pattern.trend_extremum()
+        bear_trend_extr, bull_trend_extr = self.state_idf.extremum()
+        plt.plot(range(self.rolling - 1, len(self.prices)), self.prices, color='black')
         plt.plot(bear_trend_extr, self.prices[bear_trend_extr], '.', color='green')
         plt.plot(bull_trend_extr, self.prices[bull_trend_extr], '.', color='red')
         plt.show()
     
     def plot_adf_test(self):
         self.start_plot('Adfuller test')
-        static_adf_result = states_pattern.adfuller_test(), self.size
+        static_adf_result = self.state_idf.adfuller_test()
+        plt.plot(range(self.rolling - 1, len(self.prices)), self.prices, color='black')
         plt.plot(static_adf_result, self.prices[static_adf_result], '.', color='blue')
         plt.show()
 
     def plot_panic_std(self):
         self.start_plot('Panic with mean volatility')
-        panic_std_indexes = states_pattern.panic_std(self.volatility)
+        panic_std_indexes = self.state_idf.panic_std_volatility()
+        plt.plot(range(self.rolling - 1, len(self.prices)), self.prices, color='black')
         plt.plot(panic_std_indexes, self.prices[panic_std_indexes], '.', color='orange')
         plt.show()
 
     def plot_panic_extr(self):
         self.start_plot('Panic with local extremums')
-        panic_extr_indexes = states_pattern.panic_extremum(self.prices), self.size
+        panic_extr_indexes = self.state_idf.panic_extremum()
+        plt.plot(range(self.rolling - 1, len(self.prices)), self.prices, color='black')
         plt.plot(panic_extr_indexes, self.prices[panic_extr_indexes], '.', color='orange')
         plt.show()
 
-    def plot_moving_average(self):
+    def plot_moving_average(self, window: int = None):
         self.start_plot('Price and Moving Average')
         plt.plot(range(self.rolling - 1, len(self.prices)), self.prices, color='black')
-        moving_average = st_math.moving_average(self.prices, self.window)
-        plt.plot(range(self.window, len(moving_average) + self.window), moving_average, color='red')
+        if window is None:
+            window = self.window
+        moving_average = st_math.moving_average(self.prices, window)
+        plt.plot(range(len(moving_average)), moving_average, color='orange')
         plt.legend(labels=['Price', 'SMA'])
         plt.show()
     
@@ -164,7 +173,7 @@ class StatesVisualization:
         params = None
         if make_params:
             params = self.pattern_det.make_common_params()
-        patterns, indexes = self.pattern_det.find_patterns(np.array(simulations_states).reshape(-1, 1), params, type='common')
+        patterns, indexes = self.pattern_det.find_patterns(simulations_states, params, type='common')
         if len(patterns) == 0:
             return
         self.start_plot('Common Patterns')
